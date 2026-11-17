@@ -10,7 +10,7 @@ on that date. Images are referenced as `tag@digest`, so a re-pushed tag cannot c
 | PostgreSQL (SonarQube and DefectDojo, separate containers) | `postgres` | `18.6-alpine` | `sha256:9ba53c7d…3085b` | 2026-11-11 | https://hub.docker.com/_/postgres |
 | DefectDojo django (uwsgi, celery, initializer) | `defectdojo/defectdojo-django` | `3.5.200` | `sha256:a72b66bf…a38` | 2026-11-16 | https://github.com/DefectDojo/django-DefectDojo/releases/tag/3.5.200 |
 | DefectDojo nginx | `defectdojo/defectdojo-nginx` | `3.5.200` | `sha256:830957d2…134` | 2026-11-16 | same release |
-| Valkey (DefectDojo broker/cache) | `valkey/valkey` | `9.1.2-alpine` | `sha256:48332870…8d11` | 2026-09-21 | pinned by upstream DefectDojo 3.5.200 compose |
+| Valkey (DefectDojo broker/cache) | `valkey/valkey` | `9.1.3-alpine` | `sha256:bf09d58e…fae0b` | 2026-10-26 | patch update over the DefectDojo 3.5.200 compose pin (9.1.2) |
 | sonar-scanner CLI | `sonarsource/sonar-scanner-cli` | `12.4.0.4321_8.4.0` | `sha256:6e6eca4d…2d51` | 2026-11-10 | https://hub.docker.com/r/sonarsource/sonar-scanner-cli |
 | SonarScanner for .NET | NuGet `dotnet-sonarscanner` | `12.1.0` | NuGet signed package | - | https://www.nuget.org/packages/dotnet-sonarscanner |
 | .NET SDK (CA analyzers) | `mcr.microsoft.com/dotnet/sdk` | `10.0.404` | `sha256:fe0fd4e9…3ff4fb` (tag re-pushed on 2026-11-17; previous digest `abba009a…790c` no longer resolves) | - | https://mcr.microsoft.com/artifact/mar/dotnet/sdk |
@@ -42,7 +42,7 @@ multi-platform indexes, so the same digest works on both CPUs). "Multi-arch" mea
 | `postgres:18.6-alpine` | amd64, arm64 (+ 386, arm, ppc64le, riscv64, s390x) | native |
 | `defectdojo/defectdojo-django:3.5.200` | amd64, arm64 | native |
 | `defectdojo/defectdojo-nginx:3.5.200` | amd64, arm64 | native |
-| `valkey/valkey:9.1.2-alpine` | amd64, arm64 (+ arm/v7, ppc64le) | native |
+| `valkey/valkey:9.1.3-alpine` | amd64, arm64 (+ arm/v7, ppc64le) | native |
 | `aquasec/trivy:0.76.2` | amd64, arm64 (+ ppc64le, s390x) | native |
 | `zricethezav/gitleaks:v8.30.1` | amd64, arm64 | native |
 | `zaproxy/zap-stable:2.17.0` (base of `labsecurity/zap`) | amd64, arm64 | native; the beta rule add-ons are `.zap` archives, architecture independent |
