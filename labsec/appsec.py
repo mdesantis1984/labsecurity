@@ -7,6 +7,8 @@ from pathlib import Path, PurePosixPath
 
 import yaml
 
+from labsec.scope import DEFAULT_EXCLUDES
+
 FILE_NAME = ".appsec.yml"
 _TOP_KEYS = {"name", "exclude", "zap", "rules"}
 _ZAP_KEYS = {"target_url", "openapi_url", "test_user"}
@@ -65,6 +67,12 @@ def load_appsec(project: Path) -> AppSecConfig:
         cfg.name = data["name"].strip()
     if "exclude" in data:
         cfg.exclude = _string_list(data["exclude"], "exclude")
+        for pattern in cfg.exclude:
+            if pattern.startswith("!") and pattern[1:] not in DEFAULT_EXCLUDES:
+                _fail(
+                    f"'exclude' entry '{pattern}': not a default exclude "
+                    f"(only these can be re-included with '!': {', '.join(DEFAULT_EXCLUDES)})"
+                )
     if "rules" in data:
         cfg.rules = _string_list(data["rules"], "rules")
         root = Path(project).resolve()

@@ -20,7 +20,7 @@ def _clean(value):
     return redact(value) if isinstance(value, str) else value
 
 
-def build_summary(*, project, branch, run_id, engagement_url, tools, counts, blocking_findings, errors) -> dict:
+def build_summary(*, project, branch, run_id, engagement_url, tools, counts, blocking_findings, errors, scope=None) -> dict:
     clean_tools = []
     for tool in tools:
         if tool["status"] not in TOOL_STATUSES:
@@ -30,7 +30,7 @@ def build_summary(*, project, branch, run_id, engagement_url, tools, counts, blo
             entry["reason"] = _clean(tool["reason"])
         clean_tools.append(entry)
     blocking = counts.get("blocking", {})
-    return {
+    summary = {
         "schema": SCHEMA,
         "project": project,
         "branch": branch,
@@ -48,6 +48,13 @@ def build_summary(*, project, branch, run_id, engagement_url, tools, counts, blo
         ],
         "errors": [_clean(error) for error in errors],
     }
+    if scope is not None:  # additive: what was scanned and what was left out, per reason
+        summary["scope"] = {
+            "files": int(scope.get("files", 0)),
+            "excluded": {str(reason): int(count) for reason, count in sorted(scope.get("excluded", {}).items())},
+            "long_line_files": [_clean(path) for path in scope.get("long_line_files", [])],
+        }
+    return summary
 
 
 def blocking_total(summary: dict) -> int:
@@ -80,6 +87,12 @@ def render_text(summary: dict, max_findings: int = 8) -> str:
         + ", ".join(f"{sev} {blocking[sev]}" for sev in SEVERITIES)
         + ")",
     ]
+    scope = summary.get("scope")
+    if scope:
+        excluded = ", ".join(f"{reason} {count}" for reason, count in sorted(scope["excluded"].items())) or "none"
+        lines.append(f"scope: {scope['files']} files scanned; excluded: {excluded}")
+        if scope["long_line_files"]:
+            lines.append("  skipped as vendored/minified bundles: " + ", ".join(scope["long_line_files"][:5]))
     findings = summary["blocking_findings"]
     if findings:
         lines.append(f"BLOCKED: {len(findings)} open Critical/High finding(s) not marked false positive or accepted")
