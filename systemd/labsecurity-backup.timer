@@ -1,0 +1,10 @@
+[Unit]
+Description=Daily LabSecurity database backup
+
+[Timer]
+OnCalendar=*-*-* 13:30
+RandomizedDelaySec=15min
+Persistent=true
+
+[Install]
+WantedBy=timers.target

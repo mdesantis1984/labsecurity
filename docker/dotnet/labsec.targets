@@ -1,0 +1,29 @@
+<Project>
+  <!--
+    Pass 1, imported through CustomAfterMicrosoftCommonTargets by `bin/scan`: the SECURITY pass.
+    Runs the SDK security analyzers (labsec.globalconfig) and SecurityCodeScan, and writes one SARIF 2.1 log per project.
+    The SARIF goes to DefectDojo after labsec/reports.py keeps only the security rules.
+  -->
+  <PropertyGroup>
+    <EnableNETAnalyzers>true</EnableNETAnalyzers>
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+    <CodeAnalysisTreatWarningsAsErrors>false</CodeAnalysisTreatWarningsAsErrors>
+    <ErrorLog>$(LabsecSarifDir)/$(MSBuildProjectName).sarif,version=2.1</ErrorLog>
+    <RestoreAdditionalProjectSources>$(RestoreAdditionalProjectSources);/opt/labsec/nuget-feed</RestoreAdditionalProjectSources>
+  </PropertyGroup>
+  <ItemGroup>
+    <!-- EditorConfigFiles (not GlobalAnalyzerConfigFiles): the latter is copied into it before this file is imported. -->
+    <EditorConfigFiles Include="/opt/labsec/labsec.globalconfig" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(ManagePackageVersionsCentrally)' == 'true'">
+    <PackageVersion Include="SecurityCodeScan.VS2019" Version="5.6.7" />
+    <PackageVersion Include="Meziantou.Analyzer" Version="3.0.341" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="SecurityCodeScan.VS2019" Version="5.6.7" Condition="'$(ManagePackageVersionsCentrally)' != 'true'" PrivateAssets="all" IncludeAssets="runtime; build; native; contentfiles; analyzers" />
+    <PackageReference Include="SecurityCodeScan.VS2019" Condition="'$(ManagePackageVersionsCentrally)' == 'true'" PrivateAssets="all" IncludeAssets="runtime; build; native; contentfiles; analyzers" />
+    <!-- Meziantou.Analyzer too: only its two security-category rules (MA0009, MA0039) survive the SARIF filter. -->
+    <PackageReference Include="Meziantou.Analyzer" Version="3.0.341" Condition="'$(ManagePackageVersionsCentrally)' != 'true'" PrivateAssets="all" IncludeAssets="runtime; build; native; contentfiles; analyzers" />
+    <PackageReference Include="Meziantou.Analyzer" Condition="'$(ManagePackageVersionsCentrally)' == 'true'" PrivateAssets="all" IncludeAssets="runtime; build; native; contentfiles; analyzers" />
+  </ItemGroup>
+</Project>

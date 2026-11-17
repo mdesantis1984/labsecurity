@@ -1,0 +1,12 @@
+<!-- ruleid: labsec.angular.inner-html-binding -->
+<div [innerHTML]="userHtml"></div>
+<!-- ruleid: labsec.angular.inner-html-binding -->
+<span [ innerHTML ]="trusted"></span>
+<!-- ruleid: labsec.angular.inner-html-binding -->
+<div [outerHTML]="trusted"></div>
+<!-- ok: labsec.angular.inner-html-binding -->
+<div [textContent]="userText"></div>
+<!-- ok: labsec.angular.inner-html-binding -->
+<div [innerText]="userText"></div>
+<!-- ok: labsec.angular.inner-html-binding -->
+<p>{{ userText }}</p>

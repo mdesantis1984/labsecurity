@@ -1,0 +1,26 @@
+# LabSecurity opt-in rules (INFO) for Bicep. See csharp-optin.yaml for how to enable them.
+rules:
+  - id: labsec.bicep.secret-parameter-not-secure
+    languages: [regex]
+    severity: INFO
+    message: >-
+      A Bicep parameter whose name looks like a secret (password, pwd, secret, accountKey, acctKey) is declared without
+      the @secure() decorator, so its value is kept in the deployment history. Add @secure(). The heuristic misses
+      decorators placed on other lines, so review each hit.
+    pattern-regex: '(?im)(?<!@secure\(\)\n)(?<!@secure\(\) )^param\s+\w*(password|pwd|secret|accountkey|acctkey)\w*\s+(string|object)\b'
+    paths:
+      include: ["*.bicep"]
+    metadata:
+      category: security
+      technology: [azure, bicep]
+      cwe: "CWE-532: Insertion of Sensitive Information into Log File"
+      owasp: "A04:2025 - Cryptographic Failures"
+      asvs: [V13.3.1]
+      standard: "OWASP ASVS 5.0.0 V13.3.1; Microsoft Learn, Bicep linter rule secure-secrets-in-params"
+      confidence: LOW
+      subcategory: [audit]
+      likelihood: "MEDIUM"
+      impact: "MEDIUM"
+      references:
+        - https://github.com/OWASP/ASVS/blob/v5.0.0/5.0/en/0x22-V13-Configuration.md
+        - https://learn.microsoft.com/en-us/azure/azure-resource-manager/bicep/linter-rule-secure-secrets-in-parameters

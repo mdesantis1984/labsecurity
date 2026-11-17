@@ -1,0 +1,13 @@
+# Fixtures for rules/opengrep/config-npgsql-tls.yaml (plain text; rule applies to .cs, .json, .yml, .config too).
+# ruleid: labsec.config.npgsql-ssl-mode-weak
+Host=db;Database=app;Username=app;Password=placeholder;SSL Mode=Disable
+# ruleid: labsec.config.npgsql-ssl-mode-weak
+Host=db;Database=app;SslMode=Allow
+# ok: labsec.config.npgsql-ssl-mode-weak
+Host=db;Database=app;SSL Mode=VerifyFull
+# ok: labsec.config.npgsql-ssl-mode-weak
+Host=db;Database=app;SSL Mode=Require
+# ruleid: labsec.config.npgsql-trust-server-certificate
+Host=db;Database=app;SSL Mode=Require;Trust Server Certificate=true
+# ok: labsec.config.npgsql-trust-server-certificate
+Host=db;Database=app;SSL Mode=Require;Trust Server Certificate=false

@@ -1,0 +1,109 @@
+# LabSecurity own taint rules for C#: request input reaching log templates and reflection loaders.
+# Both rules are designed for `opengrep scan --taint-intrafile` (what `bin/scan` runs).
+# The sources match labsec.csharp.sql-raw-tainted-input: ASP.NET Core request collections and string parameters of
+# controller actions or minimal-API handlers.
+rules:
+  - id: labsec.csharp.log-injection
+    languages: [csharp]
+    mode: taint
+    severity: WARNING
+    message: >-
+      Request input is interpolated or concatenated into the message template of an ILogger call. An attacker can add
+      line breaks or fake entries to the log. Pass the value as a structured argument (Log...("User {User}", user)) and
+      strip CR and LF if the sink renders plain text.
+    options:
+      taint_intrafile: true
+    pattern-sources:
+      - pattern-either:
+          - pattern: $R.Query[...]
+          - pattern: $R.Form[...]
+          - pattern: $R.Headers[...]
+          - pattern: $R.Cookies[...]
+          - pattern: $R.RouteValues[...]
+          - patterns:
+              - pattern-either:
+                  - pattern: $T $F(..., string $P, ...) { ... }
+                  - pattern: $T $F(..., string $P, ...) => $BODY
+              - focus-metavariable: $P
+    pattern-sanitizers:
+      - pattern-either:
+          - pattern: $X.Replace("\n", ...)
+          - pattern: $X.Replace("\r", ...)
+          - pattern: $X.ReplaceLineEndings(...)
+          - pattern: int.Parse(...)
+          - pattern: Guid.Parse(...)
+    pattern-sinks:
+      - patterns:
+          - pattern-either:
+              - pattern: $L.LogTrace($MSG, ...)
+              - pattern: $L.LogDebug($MSG, ...)
+              - pattern: $L.LogInformation($MSG, ...)
+              - pattern: $L.LogWarning($MSG, ...)
+              - pattern: $L.LogError($MSG, ...)
+              - pattern: $L.LogCritical($MSG, ...)
+          - metavariable-pattern:
+              metavariable: $MSG
+              pattern-either:
+                - pattern: $"..."
+                - pattern: $A + $B
+          - focus-metavariable: $MSG
+    metadata:
+      category: security
+      technology: [csharp, aspnetcore, logging]
+      cwe: "CWE-117: Improper Output Neutralization for Logs"
+      owasp: "A09:2025 - Security Logging and Alerting Failures"
+      asvs: [V16.4.1]
+      standard: "OWASP ASVS 5.0.0 V16.4.1; OWASP Logging Cheat Sheet, Log Injection"
+      confidence: MEDIUM
+      subcategory: [audit]
+      likelihood: "MEDIUM"
+      impact: "LOW"
+      references:
+        - https://github.com/OWASP/ASVS/blob/v5.0.0/5.0/en/0x25-V16-Security-Logging-and-Error-Handling.md
+        - https://cheatsheetseries.owasp.org/cheatsheets/Logging_Cheat_Sheet.html
+
+  - id: labsec.csharp.unsafe-reflection-tainted-type
+    languages: [csharp]
+    mode: taint
+    severity: ERROR
+    message: >-
+      Request input selects the type or assembly that reflection loads (Type.GetType, Assembly.Load, Activator). An
+      attacker can instantiate unexpected classes or load code. Map the input to an allowlist of known types instead.
+    options:
+      taint_intrafile: true
+    pattern-sources:
+      - pattern-either:
+          - pattern: $R.Query[...]
+          - pattern: $R.Form[...]
+          - pattern: $R.Headers[...]
+          - pattern: $R.Cookies[...]
+          - pattern: $R.RouteValues[...]
+          - patterns:
+              - pattern-either:
+                  - pattern: $T $F(..., string $P, ...) { ... }
+                  - pattern: $T $F(..., string $P, ...) => $BODY
+              - focus-metavariable: $P
+    pattern-sinks:
+      - patterns:
+          - pattern-either:
+              - pattern: Type.GetType($NAME, ...)
+              - pattern: Assembly.Load($NAME)
+              - pattern: Assembly.LoadFrom($NAME)
+              - pattern: Assembly.LoadFile($NAME)
+              - pattern: Activator.CreateInstance($NAME, ...)
+              - pattern: Activator.CreateInstanceFrom($NAME, ...)
+          - focus-metavariable: $NAME
+    metadata:
+      category: security
+      technology: [csharp, aspnetcore, reflection]
+      cwe: "CWE-470: Use of Externally-Controlled Input to Select Classes or Code"
+      owasp: "A05:2025 - Injection"
+      asvs: [V1.3.2]
+      standard: "OWASP ASVS 5.0.0 V1.3.2; OWASP ASVS V1.3.2 (dynamic code execution features)"
+      confidence: MEDIUM
+      subcategory: [audit]
+      likelihood: "LOW"
+      impact: "HIGH"
+      references:
+        - https://github.com/OWASP/ASVS/blob/v5.0.0/5.0/en/0x10-V1-Encoding-and-Sanitization.md
+        - https://owasp.org/Top10/2025/A05_2025-Injection/

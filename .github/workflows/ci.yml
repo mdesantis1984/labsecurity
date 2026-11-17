@@ -1,0 +1,104 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main, develop]
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  python:
+    name: Unit tests and rule contracts
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Install uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+        with:
+          python-version: "3.13"
+          enable-cache: true
+      - name: Run unit tests
+        run: uv run --frozen pytest
+      - name: Check rule contracts
+        run: uv run --frozen pytest tests/rules
+      - name: Check documentation links
+        run: uv run --frozen python scripts/check-doc-links.py
+
+  rules:
+    name: Opengrep rule fixtures
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Install uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+        with:
+          python-version: "3.13"
+          enable-cache: true
+      - name: Build the pinned Opengrep image
+        run: docker build --tag labsecurity/opengrep:2.0.0-r2 docker/opengrep
+      - name: Run Opengrep fixture tests
+        run: uv run --frozen pytest tests/rules -rs
+
+  shell:
+    name: Shell scripts
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Check syntax
+        run: |
+          for file in bin/labsec bin/scan scripts/*.sh scripts/lib/*.sh docker/opengrep/*.sh; do
+            bash -n "$file"
+          done
+      - name: Lint with ShellCheck
+        run: shellcheck -x -P SCRIPTDIR bin/labsec bin/scan scripts/*.sh scripts/lib/*.sh docker/opengrep/*.sh
+
+  secrets:
+    name: Secret scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - name: Scan history with Gitleaks
+        run: |
+          docker run --rm --network none --volume "$PWD:/repo:ro" \
+            zricethezav/gitleaks:v8.30.1@sha256:c00b6bd0aeb3071cbcb79009cb16a60dd9e0a7c60e2be9ab65d25e6bc8abbb7f \
+            git --no-banner --redact --config /repo/config/gitleaks.toml /repo
+
+  policy:
+    name: Policy tests and patch whitespace
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - name: Configure Node.js
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22.22.1
+      - name: Test pull request policy
+        run: node --test scripts/test-pr-policy.mjs
+      - name: Check patch whitespace
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+        run: |
+          case "${BASE_SHA:-}" in
+            ''|0000000000000000000000000000000000000000) BASE_SHA="HEAD~1" ;;
+          esac
+          git diff --check "$BASE_SHA" HEAD

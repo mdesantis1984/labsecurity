@@ -1,0 +1,10 @@
+# Secrets never live in the repository; the generated environment file is ignored.
+/.env
+*.local.env
+# Scan outputs (raw tool reports may contain sensitive snippets)
+/reports/raw/
+/var/
+__pycache__/
+*.pyc
+.venv/
+docs/research/sources/

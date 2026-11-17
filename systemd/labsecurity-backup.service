@@ -1,0 +1,12 @@
+# Linux only, optional. Install it as a symlink (docs/BACKUP.md): the unit finds this repository by resolving its own
+# symlink in the user's systemd directory (%E = $XDG_CONFIG_HOME), so no path to the clone is written here.
+# Copying the file instead of linking it will not work.
+[Unit]
+Description=LabSecurity database backup (DefectDojo + SonarQube); skipped when the lab is stopped
+
+[Service]
+Type=oneshot
+WorkingDirectory=%h
+ExecStart=/bin/sh -c 'exec "$$(dirname "$$(readlink -f "%E/systemd/user/labsecurity-backup.service")")/../scripts/backup.sh" --keep 14'
+Nice=10
+IOSchedulingClass=idle

@@ -1,0 +1,45 @@
+# Fixtures for rules/opengrep/iac-cloudflare-tunnel.yaml.
+ingress:
+  - hostname: app.example.test
+    service: https://localhost:8443
+    originRequest:
+      # ruleid: labsec.cloudflare.tunnel-no-tls-verify
+      noTLSVerify: true
+  - hostname: api.example.test
+    service: https://localhost:9443
+    originRequest:
+      # ok: labsec.cloudflare.tunnel-no-tls-verify
+      noTLSVerify: false
+  - service: http_status:404
+---
+# ruleid: labsec.cloudflare.tunnel-ingress-no-catch-all
+ingress:
+  - hostname: app.example.test
+    service: http://localhost:8080
+  - hostname: api.example.test
+    service: http://localhost:9090
+---
+# ok: labsec.cloudflare.tunnel-ingress-no-catch-all
+ingress:
+  - hostname: app.example.test
+    service: http://localhost:8080
+  - hostname: api.example.test
+    service: http://localhost:9090
+  - service: http_status:404
+---
+# ruleid: labsec.cloudflare.tunnel-ingress-no-catch-all
+ingress:
+  # the last rule still names a host
+  - hostname: app.example.test
+    service: http://localhost:8080
+  - hostname: last.example.test
+    service: http://localhost:7070
+    originRequest:
+      connectTimeout: 10s
+
+tunnel: example-tunnel-id
+---
+# ruleid: labsec.cloudflare.tunnel-ingress-no-catch-all
+ingress:
+  - hostname: end.example.test
+    service: http://localhost:6060

@@ -1,0 +1,105 @@
+# LabSecurity own rules: browser and Node/Angular weaknesses that the vendored community packs do not cover.
+rules:
+  - id: labsec.angular.xsrf-protection-disabled
+    languages: [typescript]
+    severity: WARNING
+    message: >-
+      Angular's built-in XSRF protection is turned off (withNoXsrfProtection or HttpClientXsrfModule.disable). Keep it
+      enabled for cookie-authenticated APIs, and verify the XSRF header on the server.
+    pattern-either:
+      - pattern: withNoXsrfProtection()
+      - pattern: HttpClientXsrfModule.disable()
+    metadata:
+      category: security
+      technology: [typescript, angular]
+      cwe: "CWE-352: Cross-Site Request Forgery"
+      owasp: "A01:2025 - Broken Access Control"
+      asvs: [V3.5.1]
+      standard: "OWASP ASVS 5.0.0 V3.5.1; angular.dev security guide, Disabling XSRF protection"
+      confidence: HIGH
+      subcategory: [vuln]
+      likelihood: "MEDIUM"
+      impact: "MEDIUM"
+      references:
+        - https://github.com/OWASP/ASVS/blob/v5.0.0/5.0/en/0x12-V3-Web-Frontend-Security.md
+        - https://angular.dev/best-practices/security
+        - https://github.com/angular/angular/blob/main/packages/common/http/src/module.ts
+
+  - id: labsec.angular.jsonp-enabled
+    languages: [typescript]
+    severity: WARNING
+    message: >-
+      JSONP support is enabled in HttpClient (withJsonpSupport, HttpClientJsonpModule or HttpClient.jsonp). Angular
+      deprecates JSONP because it executes the response as script and can cause XSS. Use CORS with JSON instead.
+    pattern-either:
+      - pattern: withJsonpSupport()
+      - pattern: HttpClientJsonpModule
+      - pattern: $HTTP.jsonp(...)
+    metadata:
+      category: security
+      technology: [typescript, angular]
+      cwe: "CWE-79: Improper Neutralization of Input During Web Page Generation"
+      owasp: "A05:2025 - Injection"
+      standard: "Angular source, packages/common/http/src/module.ts (JSONP deprecation note); no ASVS requirement names JSONP"
+      confidence: MEDIUM
+      subcategory: [audit]
+      likelihood: "LOW"
+      impact: "MEDIUM"
+      references:
+        - https://github.com/angular/angular/blob/main/packages/common/http/src/module.ts
+        - https://owasp.org/Top10/2025/A05_2025-Injection/
+
+  - id: labsec.typescript.browser-storage-sensitive-data
+    languages: [typescript, javascript]
+    severity: WARNING
+    message: >-
+      A value is written to localStorage or sessionStorage under a key that names a credential (password, secret, API
+      or private key, card number). Script on the page, including injected script, can read browser storage. Keep such
+      data out of the browser.
+    patterns:
+      - pattern-either:
+          - pattern: localStorage.setItem($KEY, ...)
+          - pattern: sessionStorage.setItem($KEY, ...)
+          - pattern: window.localStorage.setItem($KEY, ...)
+          - pattern: window.sessionStorage.setItem($KEY, ...)
+      - metavariable-regex:
+          metavariable: $KEY
+          regex: '(?i)^["''`][^"''`]*(password|passwd|secret|api[_-]?key|private[_-]?key|card[_-]?number|ssn)[^"''`]*["''`]$'
+    metadata:
+      category: security
+      technology: [typescript, javascript, browser]
+      cwe: "CWE-922: Insecure Storage of Sensitive Information"
+      owasp: "A06:2025 - Insecure Design"
+      asvs: [V14.3.3]
+      standard: "OWASP ASVS 5.0.0 V14.3.3; OWASP HTML5 Security Cheat Sheet, Local Storage"
+      confidence: MEDIUM
+      subcategory: [audit]
+      likelihood: "MEDIUM"
+      impact: "MEDIUM"
+      references:
+        - https://github.com/OWASP/ASVS/blob/v5.0.0/5.0/en/0x23-V14-Data-Protection.md
+        - https://cheatsheetseries.owasp.org/cheatsheets/HTML5_Security_Cheat_Sheet.html
+
+  - id: labsec.typescript.jwt-verify-ignore-expiration
+    languages: [typescript, javascript]
+    severity: ERROR
+    message: >-
+      jsonwebtoken verification is called with ignoreExpiration: true, so an expired token is accepted forever. Remove
+      the option and handle TokenExpiredError.
+    pattern-either:
+      - pattern: '$JWT.verify($TOKEN, $KEY, { ..., ignoreExpiration: true, ... })'
+      - pattern: '$JWT.verify($TOKEN, $KEY, { ..., ignoreExpiration: true, ... }, $CB)'
+    metadata:
+      category: security
+      technology: [typescript, javascript, nodejs, jwt]
+      cwe: "CWE-324: Use of a Key Past its Expiration Date"
+      owasp: "A07:2025 - Authentication Failures"
+      asvs: [V9.2.1]
+      standard: "OWASP ASVS 5.0.0 V9.2.1; OWASP ASVS V9.2.1 (nbf and exp must be validated)"
+      confidence: HIGH
+      subcategory: [vuln]
+      likelihood: "MEDIUM"
+      impact: "HIGH"
+      references:
+        - https://github.com/OWASP/ASVS/blob/v5.0.0/5.0/en/0x18-V9-Self-contained-Tokens.md
+        - https://cheatsheetseries.owasp.org/cheatsheets/JSON_Web_Token_Cheat_Sheet.html

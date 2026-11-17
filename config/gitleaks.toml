@@ -1,0 +1,97 @@
+# LabSecurity's Gitleaks configuration (used with --config, so a project's own .gitleaks.toml cannot weaken it).
+# Gitleaks' default ruleset (v8.30.1, MIT) stays on; the rules below add the shapes that are common in
+# ASP.NET / Npgsql / Keycloak projects and that the defaults do not recognize.
+title = "LabSecurity"
+
+[extend]
+useDefault = true
+
+[[rules]]
+id = "labsec-connection-string-password"
+description = "Password inside a database connection string (ASP.NET, Npgsql, SqlClient)"
+# Server=...;Password=...  (the password comes after the server/user attribute)
+regex = '''(?i)(?:server|host|data source|database|user id|uid|username|user)\s*=[^\r\n"']{0,200}?;\s*(?:password|pwd)\s*=\s*(?P<secret>[^;"'\r\n\\]{4,})'''
+secretGroup = 1
+keywords = ["password", "pwd"]
+tags = ["connection-string", "labsec"]
+
+  [[rules.allowlists]]
+  description = "placeholders and substitution tokens"
+  regexTarget = "secret"
+  regexes = [
+    '''(?i)^(?:changeme|change-me|password|passwd|secret|example|placeholder|dummy|your[-_ ]?password|<[^>]*>|x{3,}|\*{3,}|_{2,}.*_{2,})$''',
+    '''^(?:\$\{.*\}|\{\{.*\}\}|%[A-Za-z0-9_]+%|\$\([A-Za-z0-9_]+\)|#\{.*\})$''',
+  ]
+
+[[rules]]
+id = "labsec-connection-string-password-first"
+description = "Password inside a database connection string (the password comes before the server/user attribute)"
+regex = '''(?i)(?:password|pwd)\s*=\s*(?P<secret>[^;"'\r\n\\]{4,});[^\r\n"']{0,200}?(?:server|host|data source|database|user id|uid|username|user)\s*='''
+secretGroup = 1
+keywords = ["password", "pwd"]
+tags = ["connection-string", "labsec"]
+
+  [[rules.allowlists]]
+  description = "placeholders and substitution tokens"
+  regexTarget = "secret"
+  regexes = [
+    '''(?i)^(?:changeme|change-me|password|passwd|secret|example|placeholder|dummy|your[-_ ]?password|<[^>]*>|x{3,}|\*{3,}|_{2,}.*_{2,})$''',
+    '''^(?:\$\{.*\}|\{\{.*\}\}|%[A-Za-z0-9_]+%|\$\([A-Za-z0-9_]+\)|#\{.*\})$''',
+  ]
+
+[[rules]]
+id = "labsec-appsettings-secret"
+description = "Secret value in an appsettings*.json file (ClientSecret, ApiKey, JwtKey, SigningKey...)"
+path = '''(?i)(?:^|[\\/])appsettings(?:\.[^\\/]+)?\.json$'''
+regex = '''(?i)"(?:[A-Za-z0-9_.:-]*(?:client[_-]?secret|api[_-]?key|jwt[_-]?(?:key|secret)|signing[_-]?key|secret[_-]?key|access[_-]?key|private[_-]?key|shared[_-]?secret|secret))"\s*:\s*"(?P<secret>[^"\r\n]{8,})"'''
+secretGroup = 1
+keywords = ["secret", "apikey", "api_key", "api-key", "jwtkey", "jwt_key", "signingkey", "signing_key", "accesskey", "privatekey"]
+entropy = 3.0
+tags = ["appsettings", "labsec"]
+
+  [[rules.allowlists]]
+  description = "placeholders, hints to the dotnet user-store and substitution tokens"
+  regexTarget = "secret"
+  regexes = [
+    '''(?i)^(?:changeme|change-me|secret|your[-_ ].*|<[^>]*>|x{3,}|\*{3,}|_{2,}.*_{2,}|set[-_ ]?(?:in|via|from|with).*)$''',
+    '''^(?:\$\{.*\}|\{\{.*\}\}|%[A-Za-z0-9_]+%|\$\([A-Za-z0-9_]+\)|#\{.*\})$''',
+  ]
+
+[[rules]]
+id = "labsec-keycloak-realm-client-secret"
+description = "Keycloak client secret in a realm export (realm*.json, keycloak*.json)"
+path = '''(?i)(?:^|[\\/])(?:[^\\/]*realm[^\\/]*|keycloak[^\\/]*)\.json$'''
+regex = '''(?i)"(?:secret|clientSecret|client_secret)"\s*:\s*"(?P<secret>[A-Za-z0-9_-]{16,})"'''
+secretGroup = 1
+keywords = ["secret"]
+entropy = 3.0
+tags = ["keycloak", "labsec"]
+
+  [[rules.allowlists]]
+  description = "Keycloak masks exported secrets as ********"
+  regexTarget = "secret"
+  regexes = ['''^\*+$''', '''(?i)^(?:changeme|secret|x{3,})$''']
+
+[[rules]]
+id = "labsec-keycloak-client-secret-setting"
+description = "Keycloak client secret in a configuration key (KEYCLOAK_CLIENT_SECRET, keycloak.credentials.secret, client-secret)"
+regex = '''(?i)keycloak[\w.\-]*?(?:client[_.\-]?secret|credentials[_.\-]?secret)["']?\s*[:=]\s*["']?(?P<secret>[A-Za-z0-9_\-]{16,})'''
+secretGroup = 1
+keywords = ["keycloak"]
+entropy = 3.0
+tags = ["keycloak", "labsec"]
+
+  [[rules.allowlists]]
+  description = "placeholders and substitution tokens"
+  regexTarget = "secret"
+  regexes = ['''(?i)^(?:changeme|change-me|secret|your[-_ ].*|x{3,})$''']
+
+# Files that are never a credential source.
+[allowlist]
+description = "LabSecurity global allowlist"
+paths = [
+  '''(?i)(?:^|[\\/])package-lock\.json$''',
+  '''(?i)(?:^|[\\/])yarn\.lock$''',
+  '''(?i)(?:^|[\\/])pnpm-lock\.yaml$''',
+  '''(?i)\.min\.js$''',
+]

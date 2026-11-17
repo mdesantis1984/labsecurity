@@ -1,0 +1,45 @@
+# LabSecurity custom rules: C# / EF Core / Npgsql SQL built from text.
+# Owner policy: FromSqlRaw / ExecuteSqlRaw / NpgsqlCommand must never receive concatenated or interpolated text.
+# Use FromSqlInterpolated / ExecuteSqlInterpolated / SqlQuery (FormattableString), or NpgsqlParameter with a constant command text.
+rules:
+  - id: labsec.csharp.sql-raw-built-text
+    languages: [csharp]
+    severity: ERROR
+    message: >-
+      SQL text is built by concatenation, interpolation or string.Format and passed to a raw SQL API. Use
+      FromSqlInterpolated / ExecuteSqlInterpolated / SqlQuery, or a constant command text with NpgsqlParameter
+      (Parameters.AddWithValue) instead.
+    metadata:
+      category: security
+      technology: [csharp, entity-framework, npgsql, ado.net]
+      cwe: "CWE-89: Improper Neutralization of Special Elements used in an SQL Command ('SQL Injection')"
+      owasp: "A05:2025 - Injection"
+      standard: "OWASP Top 10 2025 (A05)"
+      confidence: HIGH
+      likelihood: HIGH
+      impact: HIGH
+      subcategory: [vuln]
+      references:
+        - https://learn.microsoft.com/en-us/ef/core/querying/sql-queries#passing-parameters
+        - https://owasp.org/Top10/2025/A05_2025-Injection/
+    patterns:
+      - pattern-either:
+          - pattern: $X.FromSqlRaw($SQL, ...)
+          - pattern: $X.ExecuteSqlRaw($SQL, ...)
+          - pattern: $X.ExecuteSqlRawAsync($SQL, ...)
+          - pattern: $X.SqlQueryRaw<$T>($SQL, ...)
+          - pattern: new NpgsqlCommand($SQL, ...)
+          - pattern: new SqlCommand($SQL, ...)
+          - pattern: new SqliteCommand($SQL, ...)
+          - pattern: new MySqlCommand($SQL, ...)
+          - pattern: $X.CommandText = $SQL
+      - metavariable-pattern:
+          metavariable: $SQL
+          patterns:
+            - pattern-either:
+                - pattern: $A + $B
+                - pattern: $"..."
+                - pattern: string.Format(...)
+                - pattern: String.Format(...)
+            - pattern-not: '"..." + "..."'
+            - pattern-not: '"..." + "..." + "..."'

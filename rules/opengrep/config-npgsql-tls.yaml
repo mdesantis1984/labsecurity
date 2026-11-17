@@ -1,0 +1,50 @@
+# LabSecurity own rules: Npgsql connection strings that weaken TLS. Text rules, so they also work in appsettings.json,
+# C# literals and compose files.
+rules:
+  - id: labsec.config.npgsql-ssl-mode-weak
+    languages: [regex]
+    severity: WARNING
+    message: >-
+      The Npgsql connection string sets SSL Mode to Disable or Allow. Npgsql documents both as giving no eavesdropping
+      protection when the server does not insist on TLS. Use Require at least, and VerifyFull with a trusted CA.
+    pattern-regex: '(?i)\bSSL[ _]?Mode\s*=\s*(Disable|Allow)\b'
+    paths:
+      include: ["*.cs", "*.json", "*.yml", "*.yaml", "*.config", "*.txt"]
+    metadata:
+      category: security
+      technology: [npgsql, postgresql, dotnet]
+      cwe: "CWE-319: Cleartext Transmission of Sensitive Information"
+      owasp: "A04:2025 - Cryptographic Failures"
+      asvs: [V12.3.1]
+      standard: "OWASP ASVS 5.0.0 V12.3.1; Npgsql docs, Security and encryption, Encryption (SSL/TLS)"
+      confidence: MEDIUM
+      subcategory: [audit]
+      likelihood: "MEDIUM"
+      impact: "MEDIUM"
+      references:
+        - https://github.com/OWASP/ASVS/blob/v5.0.0/5.0/en/0x21-V12-Secure-Communication.md
+        - https://www.npgsql.org/doc/security.html
+
+  - id: labsec.config.npgsql-trust-server-certificate
+    languages: [regex]
+    severity: WARNING
+    message: >-
+      The Npgsql connection string sets Trust Server Certificate to true, which accepts the server certificate without
+      validating it and so gives no protection against an impersonated database. Remove it and trust a specific CA.
+    pattern-regex: '(?i)\bTrust[ _]?Server[ _]?Certificate\s*=\s*true\b'
+    paths:
+      include: ["*.cs", "*.json", "*.yml", "*.yaml", "*.config", "*.txt"]
+    metadata:
+      category: security
+      technology: [npgsql, postgresql, dotnet]
+      cwe: "CWE-295: Improper Certificate Validation"
+      owasp: "A07:2025 - Authentication Failures"
+      asvs: [V12.3.2]
+      standard: "OWASP ASVS 5.0.0 V12.3.2; Npgsql docs, connection string parameters (Trust Server Certificate)"
+      confidence: HIGH
+      subcategory: [vuln]
+      likelihood: "MEDIUM"
+      impact: "HIGH"
+      references:
+        - https://github.com/OWASP/ASVS/blob/v5.0.0/5.0/en/0x21-V12-Secure-Communication.md
+        - https://www.npgsql.org/doc/connection-string-parameters.html

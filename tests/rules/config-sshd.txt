@@ -1,0 +1,26 @@
+# Fixtures for rules/opengrep/config-sshd.yaml. Only the line after each annotation is judged.
+Port 22
+# ruleid: labsec.sshd.permit-root-login
+PermitRootLogin yes
+# ruleid: labsec.sshd.permit-root-login
+PermitRootLogin prohibit-password
+# ruleid: labsec.sshd.permit-root-login
+  PermitRootLogin=forced-commands-only
+# ok: labsec.sshd.permit-root-login
+PermitRootLogin no
+# ok: labsec.sshd.permit-root-login
+PermitRootLogin NO
+# ok: labsec.sshd.permit-root-login
+#PermitRootLogin yes
+# ok: labsec.sshd.permit-root-login
+PasswordAuthentication yes
+# ruleid: labsec.sshd.permit-empty-passwords
+PermitEmptyPasswords yes
+# ruleid: labsec.sshd.permit-empty-passwords
+PermitEmptyPasswords = yes
+# ok: labsec.sshd.permit-empty-passwords
+PermitEmptyPasswords no
+# ok: labsec.sshd.permit-empty-passwords
+#PermitEmptyPasswords yes
+# ok: labsec.sshd.permit-empty-passwords
+PermitUserEnvironment yes

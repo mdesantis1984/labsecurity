@@ -1,0 +1,66 @@
+name: Rule request
+description: Propose a detection rule backed by an official standard
+title: "feat(rules): "
+labels: ["type:feature"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: Describe the insecure pattern LabSecurity does not detect today, or the existing rule that reports too much.
+    validations:
+      required: true
+  - type: input
+    id: standard
+    attributes:
+      label: Official standard
+      description: Link the live page that states the pattern is insecure (OWASP ASVS or Cheat Sheet, CIS, vendor documentation).
+      placeholder: https://
+    validations:
+      required: true
+  - type: textarea
+    id: examples
+    attributes:
+      label: Insecure and safe examples
+      description: Provide a minimal insecure example and the near-miss that must not be reported. Use fake values, never real credentials.
+    validations:
+      required: true
+  - type: dropdown
+    id: severity
+    attributes:
+      label: Proposed severity
+      description: Gated rules can block a pull request; opt-in rules stay outside the gate.
+      options:
+        - Gated (ERROR or WARNING)
+        - Opt-in (INFO)
+    validations:
+      required: true
+  - type: dropdown
+    id: delivery-impact
+    attributes:
+      label: Delivery impact
+      description: Select every impact that applies, or explicitly select no user-facing impact.
+      multiple: true
+      options:
+        - Documentation change required
+        - Public API change
+        - Migration required
+        - Compatibility change
+        - Release note required
+        - No user-facing impact
+    validations:
+      required: true
+  - type: textarea
+    id: impact-evidence
+    attributes:
+      label: Impact evidence
+      description: Name affected documents and tests, or justify why the selected impact is absent.
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance-signals
+    attributes:
+      label: Acceptance signals
+      description: List the evidence that will prove the rule is complete (fixtures, tests, docs/RULES.md entry).
+    validations:
+      required: true

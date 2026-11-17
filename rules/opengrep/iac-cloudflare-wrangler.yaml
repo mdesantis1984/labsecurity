@@ -1,0 +1,32 @@
+# LabSecurity own rules: Cloudflare Workers configuration (wrangler.toml, wrangler.json, wrangler.jsonc). Text rules.
+rules:
+  - id: labsec.cloudflare.wrangler-vars-literal-secret
+    languages: [regex]
+    severity: ERROR
+    message: >-
+      A `vars` entry of the Wrangler configuration has a name that looks sensitive (KEY, TOKEN, PASSWORD, SECRET or
+      CREDENTIAL) and a literal value. Plaintext variables are committed to the repository and shown in the
+      dashboard. Store the value as an encrypted Worker value (`wrangler secret put`) or a Cloudflare store binding,
+      and keep only non-sensitive values in `vars`.
+    pattern-either:
+      # [vars] or [env.<name>.vars] table
+      - pattern-regex: '(?im)^\[(?:env\.[\w-]+\.)?vars\][ \t]*(?:#[^\n]*)?\n(?:(?![ \t]*\[)[^\n]*\n)*?[ \t]*(?![\w-]*public)[\w-]*(?:key|token|password|secret|credential)[\w-]*[ \t]*=[ \t]*["''][^"''\n]+["'']'
+      # vars = { NAME = "value" }
+      - pattern-regex: '(?im)^[ \t]*vars[ \t]*=[ \t]*\{[^}\n]*?(?<![\w-])(?![\w-]*public)[\w-]*(?:key|token|password|secret|credential)[\w-]*[ \t]*=[ \t]*["''][^"''\n]+["'']'
+      # "vars": { "NAME": "value" } in wrangler.json and wrangler.jsonc
+      - pattern-regex: '(?i)"vars"[ \t]*:[ \t]*\{[^{}]*?"(?![\w-]*public)[\w-]*(?:key|token|password|secret|credential)[\w-]*"[ \t]*:[ \t]*"[^"\n]+"'
+    paths:
+      include: ["wrangler.toml", "wrangler.json", "wrangler.jsonc"]
+    metadata:
+      category: security
+      technology: [cloudflare, workers, wrangler]
+      cwe: "CWE-798: Use of Hard-coded Credentials"
+      cwe_secondary: "CWE-312: Cleartext Storage of Sensitive Information"
+      owasp: "A07:2025 - Authentication Failures"
+      standard: "Cloudflare Workers configuration docs: do not use plaintext environment variables to store sensitive information; use encrypted values or store bindings instead"
+      confidence: MEDIUM
+      subcategory: [vuln]
+      likelihood: "HIGH"
+      impact: "HIGH"
+      references:
+        - https://developers.cloudflare.com/workers/configuration/

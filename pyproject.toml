@@ -1,0 +1,30 @@
+[project]
+name = "labsec"
+version = "0.1.0"
+description = "LabSecurity CLI: one full AppSec lap (static tools, SonarQube, DefectDojo) over any project."
+requires-python = ">=3.11"
+dependencies = [
+    "pyyaml>=6.0",
+    "requests>=2.32",
+]
+
+[project.scripts]
+scan = "labsec.cli:main"
+
+[dependency-groups]
+dev = ["pytest>=8"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["labsec"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = [".", "tests"]
+addopts = "-m 'not integration' -q"
+markers = [
+    "integration: needs the running lab (docker compose up -d, bin/scan --bootstrap); slow",
+]

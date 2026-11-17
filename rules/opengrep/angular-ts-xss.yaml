@@ -1,0 +1,136 @@
+# LabSecurity custom rules: Angular / TypeScript DOM XSS and dynamic code execution sinks.
+# Owner policy: flag innerHTML, bypassSecurityTrust*, document.write and eval.
+rules:
+  - id: labsec.angular.inner-html-binding
+    languages: [regex]
+    severity: WARNING
+    message: >-
+      [innerHTML] / [outerHTML] binding in an Angular template. Angular sanitizes the value, but the binding is still
+      a markup-injection point and breaks as soon as the value is wrapped by bypassSecurityTrustHtml. Prefer text
+      interpolation ({{ value }}) or [textContent]; if HTML is required, sanitize it with a vetted library (for
+      example DOMPurify) before binding and review the source of the value.
+    paths:
+      include:
+        - "*.html"
+        - "*.ts"
+    metadata:
+      category: security
+      technology: [angular]
+      cwe: "CWE-79: Improper Neutralization of Input During Web Page Generation ('Cross-site Scripting')"
+      owasp: "A05:2025 - Injection"
+      standard: "OWASP Top 10 2025 (A05)"
+      confidence: MEDIUM
+      likelihood: MEDIUM
+      impact: MEDIUM
+      subcategory: [audit]
+      references:
+        - https://angular.dev/best-practices/security#sanitization-and-security-contexts
+    pattern-regex: '\[\s*(innerHTML|outerHTML)\s*\]\s*='
+
+  - id: labsec.typescript.dom-html-assignment
+    languages: [typescript, javascript]
+    severity: ERROR
+    message: >-
+      Assignment to innerHTML / outerHTML or a call to insertAdjacentHTML writes markup straight into the DOM without
+      Angular's sanitizer. Use textContent / innerText for text, Angular templates for markup, or sanitize the value
+      with a vetted library (for example DOMPurify) first.
+    metadata:
+      category: security
+      technology: [typescript, angular, browser]
+      cwe: "CWE-79: Improper Neutralization of Input During Web Page Generation ('Cross-site Scripting')"
+      owasp: "A05:2025 - Injection"
+      standard: "OWASP Top 10 2025 (A05)"
+      confidence: HIGH
+      likelihood: HIGH
+      impact: MEDIUM
+      subcategory: [vuln]
+      references:
+        - https://owasp.org/www-community/attacks/DOM_Based_XSS
+    patterns:
+      - pattern-either:
+          - pattern: $EL.innerHTML = $VALUE
+          - pattern: $EL.innerHTML += $VALUE
+          - pattern: $EL.outerHTML = $VALUE
+          - pattern: $EL.insertAdjacentHTML($POS, $VALUE)
+      - pattern-not: $EL.innerHTML = ""
+      - pattern-not: $EL.innerHTML = ''
+      - pattern-not: $EL.outerHTML = ""
+      - pattern-not: $EL.outerHTML = ''
+
+  - id: labsec.angular.bypass-security-trust
+    languages: [typescript, javascript]
+    severity: ERROR
+    message: >-
+      bypassSecurityTrust* turns off Angular's built-in sanitization for the value. Remove the call, or make sure the
+      value is a constant or already sanitized by a vetted library (for example DOMPurify) and document why.
+    metadata:
+      category: security
+      technology: [typescript, angular]
+      cwe: "CWE-79: Improper Neutralization of Input During Web Page Generation ('Cross-site Scripting')"
+      owasp: "A05:2025 - Injection"
+      standard: "OWASP Top 10 2025 (A05)"
+      confidence: HIGH
+      likelihood: MEDIUM
+      impact: HIGH
+      subcategory: [vuln]
+      references:
+        - https://angular.dev/best-practices/security#trusting-safe-values
+    patterns:
+      - pattern: $S.$M(...)
+      - metavariable-regex:
+          metavariable: $M
+          regex: '^bypassSecurityTrust(Html|Script|Style|Url|ResourceUrl)$'
+
+  - id: labsec.typescript.document-write
+    languages: [typescript, javascript]
+    severity: ERROR
+    message: >-
+      document.write / document.writeln inject markup into the page while it is parsed and are a classic DOM XSS
+      sink. Build elements with the DOM API (createElement, textContent) or an Angular template instead.
+    metadata:
+      category: security
+      technology: [typescript, angular, browser]
+      cwe: "CWE-79: Improper Neutralization of Input During Web Page Generation ('Cross-site Scripting')"
+      owasp: "A05:2025 - Injection"
+      standard: "OWASP Top 10 2025 (A05)"
+      confidence: HIGH
+      likelihood: HIGH
+      impact: MEDIUM
+      subcategory: [vuln]
+      references:
+        - https://owasp.org/www-community/attacks/DOM_Based_XSS
+    pattern-either:
+      - pattern: document.write(...)
+      - pattern: document.writeln(...)
+      - pattern: window.document.write(...)
+      - pattern: window.document.writeln(...)
+
+  - id: labsec.typescript.dynamic-code-execution
+    languages: [typescript, javascript]
+    severity: ERROR
+    message: >-
+      eval(), new Function() and setTimeout / setInterval with a string argument execute text as code. Replace them
+      with a function reference or a data lookup; never feed user-controlled text into them.
+    metadata:
+      category: security
+      technology: [typescript, javascript]
+      cwe: "CWE-95: Improper Neutralization of Directives in Dynamically Evaluated Code ('Eval Injection')"
+      owasp: "A05:2025 - Injection"
+      standard: "OWASP Top 10 2025 (A05)"
+      confidence: HIGH
+      likelihood: MEDIUM
+      impact: HIGH
+      subcategory: [vuln]
+      references:
+        - https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/eval#never_use_eval!
+    pattern-either:
+      - pattern: eval(...)
+      - pattern: window.eval(...)
+      - pattern: new Function(...)
+      - pattern: Function(...)
+      - pattern: setTimeout("...", ...)
+      - pattern: setInterval("...", ...)
+      - pattern: setTimeout($A + $B, ...)
+      - pattern: setInterval($A + $B, ...)
+      - pattern: setTimeout(`...`, ...)
+      - pattern: setInterval(`...`, ...)

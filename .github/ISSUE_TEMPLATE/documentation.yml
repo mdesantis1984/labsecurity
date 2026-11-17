@@ -1,0 +1,62 @@
+name: Documentation change
+description: Propose a focused, verifiable documentation outcome
+title: "docs: "
+labels: ["type:docs"]
+body:
+  - type: textarea
+    id: reader-problem
+    attributes:
+      label: Reader problem
+      description: Describe what a reader cannot understand or complete today.
+    validations:
+      required: true
+  - type: textarea
+    id: outcome
+    attributes:
+      label: Proposed outcome
+      description: Describe the observable reader result, not a file list.
+    validations:
+      required: true
+  - type: textarea
+    id: source-of-truth
+    attributes:
+      label: Executable source of truth
+      description: Name the code, manifest, workflow, or test that the documentation must match.
+    validations:
+      required: true
+  - type: textarea
+    id: scope
+    attributes:
+      label: Scope
+      description: Identify what is in scope, out of scope, and any dependencies.
+    validations:
+      required: true
+  - type: dropdown
+    id: delivery-impact
+    attributes:
+      label: Delivery impact
+      description: Select every impact that applies, or explicitly select no user-facing impact.
+      multiple: true
+      options:
+        - Documentation change required
+        - Public API change
+        - Migration required
+        - Compatibility change
+        - Release note required
+        - No user-facing impact
+    validations:
+      required: true
+  - type: textarea
+    id: impact-evidence
+    attributes:
+      label: Impact evidence
+      description: Name affected documents and tests, or justify why the selected impact is absent.
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance-signals
+    attributes:
+      label: Acceptance signals
+      description: List the executable evidence that proves the outcome is complete.
+    validations:
+      required: true

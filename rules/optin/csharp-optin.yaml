@@ -1,0 +1,55 @@
+# LabSecurity opt-in rules (INFO, imported to DefectDojo as Low and never part of the default gate).
+# They flag patterns that are often legitimate, so a human decides. Not scanned by default: bin/scan only loads
+# rules/opengrep. To use them in a project, copy the file into the project and list it under `rules:` in .appsec.yml.
+rules:
+  - id: labsec.csharp.antiforgery-disabled
+    languages: [csharp]
+    severity: INFO
+    message: >-
+      Antiforgery validation is disabled for an endpoint or controller (DisableAntiforgery or IgnoreAntiforgeryToken).
+      This is correct for token-authenticated APIs and webhooks, and a CSRF hole for cookie-authenticated forms. Confirm
+      the endpoint does not rely on cookie authentication.
+    pattern-either:
+      - pattern: $E.DisableAntiforgery()
+      - pattern: |
+          [IgnoreAntiforgeryToken]
+          $T $F(...) { ... }
+      - pattern: |
+          [IgnoreAntiforgeryToken]
+          class $C { ... }
+    metadata:
+      category: security
+      technology: [csharp, aspnetcore]
+      cwe: "CWE-352: Cross-Site Request Forgery"
+      owasp: "A01:2025 - Broken Access Control"
+      asvs: [V3.5.1]
+      standard: "OWASP ASVS 5.0.0 V3.5.1; Microsoft Learn, ASP.NET Core anti-request-forgery (opting an endpoint out)"
+      confidence: LOW
+      subcategory: [audit]
+      likelihood: "LOW"
+      impact: "MEDIUM"
+      references:
+        - https://github.com/OWASP/ASVS/blob/v5.0.0/5.0/en/0x12-V3-Web-Frontend-Security.md
+        - https://learn.microsoft.com/en-us/aspnet/core/security/anti-request-forgery
+
+  - id: labsec.csharp.cors-allow-any-origin
+    languages: [csharp]
+    severity: INFO
+    message: >-
+      The CORS policy allows any origin (AllowAnyOrigin). This is acceptable for public, credential-free APIs and risky
+      otherwise. Prefer WithOrigins(...) with a fixed list.
+    pattern: $B.AllowAnyOrigin()
+    metadata:
+      category: security
+      technology: [csharp, aspnetcore, cors]
+      cwe: "CWE-942: Permissive Cross-domain Security Policy with Untrusted Domains"
+      owasp: "A02:2025 - Security Misconfiguration"
+      asvs: [V3.4.2]
+      standard: "OWASP ASVS 5.0.0 V3.4.2; OWASP ASVS V3.4.2 (CORS Access-Control-Allow-Origin fixed value)"
+      confidence: LOW
+      subcategory: [audit]
+      likelihood: "LOW"
+      impact: "MEDIUM"
+      references:
+        - https://github.com/OWASP/ASVS/blob/v5.0.0/5.0/en/0x12-V3-Web-Frontend-Security.md
+        - https://learn.microsoft.com/en-us/aspnet/core/security/cors

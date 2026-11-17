@@ -1,0 +1,70 @@
+name: Feature request
+description: Propose a focused product or engineering change
+title: "feat: "
+labels: ["type:feature"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: Describe the user or operational problem to solve.
+    validations:
+      required: true
+  - type: textarea
+    id: outcome
+    attributes:
+      label: Proposed outcome
+      description: Describe the observable result, not an implementation prescription.
+    validations:
+      required: true
+  - type: textarea
+    id: scope
+    attributes:
+      label: Scope
+      description: Identify what is in scope, out of scope, and any dependencies.
+    validations:
+      required: true
+  - type: dropdown
+    id: component
+    attributes:
+      label: Component
+      description: Select the part of LabSecurity that is affected.
+      options:
+        - CLI (labsec, bin/scan)
+        - Lab services (compose.yaml, scripts)
+        - Opengrep rules
+        - Scanner images (docker/)
+        - Agent skill
+        - Documentation
+        - Other
+    validations:
+      required: true
+  - type: dropdown
+    id: delivery-impact
+    attributes:
+      label: Delivery impact
+      description: Select every impact that applies, or explicitly select no user-facing impact.
+      multiple: true
+      options:
+        - Documentation change required
+        - Public API change
+        - Migration required
+        - Compatibility change
+        - Release note required
+        - No user-facing impact
+    validations:
+      required: true
+  - type: textarea
+    id: impact-evidence
+    attributes:
+      label: Impact evidence
+      description: Name affected documents and tests, or justify why the selected impact is absent.
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance-signals
+    attributes:
+      label: Acceptance signals
+      description: List the evidence that will prove the outcome is complete.
+    validations:
+      required: true

@@ -1,0 +1,122 @@
+# LabSecurity: security analyzers shipped with the .NET SDK (no package needed) plus the severity of the packaged ones.
+# Injected through labsec.targets / labsec-quality.targets on a scratch copy; the analyzed repository is never modified.
+# Every rule below is a *security* rule: it reaches DefectDojo (the SARIF is filtered again by category in labsec/reports.py).
+# Quality rules are not listed here: AnalysisMode=All (labsec-quality.targets) turns them on for SonarQube only.
+is_global = true
+global_level = 100
+
+# --- Injection (taint analysis: needs data flow from a source to a sink)
+dotnet_diagnostic.CA2100.severity = warning   # SQL built from untrusted input
+dotnet_diagnostic.CA3001.severity = warning   # SQL injection
+dotnet_diagnostic.CA3002.severity = warning   # XSS
+dotnet_diagnostic.CA3003.severity = warning   # file path injection
+dotnet_diagnostic.CA3004.severity = warning   # information disclosure
+dotnet_diagnostic.CA3005.severity = warning   # LDAP injection
+dotnet_diagnostic.CA3006.severity = warning   # process command injection
+dotnet_diagnostic.CA3007.severity = warning   # open redirect
+dotnet_diagnostic.CA3008.severity = warning   # XPath injection
+dotnet_diagnostic.CA3009.severity = warning   # XML injection
+dotnet_diagnostic.CA3010.severity = warning   # XAML injection
+dotnet_diagnostic.CA3011.severity = warning   # DLL injection
+dotnet_diagnostic.CA3012.severity = warning   # regex injection
+
+# --- Unsafe deserialization
+dotnet_diagnostic.CA2300.severity = warning   # BinaryFormatter
+dotnet_diagnostic.CA2301.severity = warning   # BinaryFormatter without a binder
+dotnet_diagnostic.CA2302.severity = warning   # BinaryFormatter.Binder before Deserialize
+dotnet_diagnostic.CA2305.severity = warning   # LosFormatter
+dotnet_diagnostic.CA2310.severity = warning   # NetDataContractSerializer
+dotnet_diagnostic.CA2311.severity = warning
+dotnet_diagnostic.CA2312.severity = warning
+dotnet_diagnostic.CA2315.severity = warning   # ObjectStateFormatter
+dotnet_diagnostic.CA2321.severity = warning   # JavaScriptSerializer with a type resolver
+dotnet_diagnostic.CA2322.severity = warning
+dotnet_diagnostic.CA2326.severity = warning   # Newtonsoft TypeNameHandling other than None
+dotnet_diagnostic.CA2327.severity = warning   # insecure JsonSerializerSettings
+dotnet_diagnostic.CA2328.severity = warning
+dotnet_diagnostic.CA2329.severity = warning
+dotnet_diagnostic.CA2330.severity = warning
+dotnet_diagnostic.CA2350.severity = warning   # DataTable.ReadXml with untrusted input
+dotnet_diagnostic.CA2351.severity = warning   # DataSet.ReadXml with untrusted input
+dotnet_diagnostic.CA2352.severity = warning
+dotnet_diagnostic.CA2353.severity = warning
+dotnet_diagnostic.CA2354.severity = warning
+dotnet_diagnostic.CA2355.severity = warning
+dotnet_diagnostic.CA2356.severity = warning
+dotnet_diagnostic.CA2361.severity = warning
+dotnet_diagnostic.CA2362.severity = warning
+dotnet_diagnostic.CA5360.severity = warning   # dangerous method in a deserialization callback
+dotnet_diagnostic.CA5362.severity = warning   # reference cycle in serializable class
+dotnet_diagnostic.CA5366.severity = warning   # DataSet.ReadXml with a trusted source
+dotnet_diagnostic.CA5367.severity = warning   # serialize types with pointer fields
+dotnet_diagnostic.CA5369.severity = warning   # XmlSerializer.Deserialize without an XmlReader
+dotnet_diagnostic.CA5370.severity = warning
+dotnet_diagnostic.CA5371.severity = warning
+dotnet_diagnostic.CA5372.severity = warning
+dotnet_diagnostic.CA5374.severity = warning   # XslTransform
+
+# --- XML processing and API design
+dotnet_diagnostic.CA2153.severity = warning   # avoid handling corrupted state exceptions
+dotnet_diagnostic.CA3061.severity = warning   # schema added by URL
+dotnet_diagnostic.CA3075.severity = warning   # insecure DTD processing
+dotnet_diagnostic.CA3076.severity = warning   # insecure XSLT script execution
+dotnet_diagnostic.CA3077.severity = warning   # insecure processing in API design
+dotnet_diagnostic.CA3147.severity = warning   # verb handlers need ValidateAntiForgeryToken
+
+# --- Cryptography, TLS, certificates, cookies, tokens (CA5350-CA5405)
+dotnet_diagnostic.CA5350.severity = warning   # weak cryptographic algorithms
+dotnet_diagnostic.CA5351.severity = warning   # broken cryptographic algorithms
+dotnet_diagnostic.CA5358.severity = warning   # unsafe cipher modes
+dotnet_diagnostic.CA5359.severity = warning   # certificate validation disabled
+dotnet_diagnostic.CA5361.severity = warning   # SChannel strong crypto disabled
+dotnet_diagnostic.CA5363.severity = warning   # request validation disabled
+dotnet_diagnostic.CA5364.severity = warning   # deprecated security protocols
+dotnet_diagnostic.CA5365.severity = warning   # HTTP header checking disabled
+dotnet_diagnostic.CA5368.severity = warning   # ViewStateUserKey for Page classes
+dotnet_diagnostic.CA5373.severity = warning   # obsolete key derivation function
+dotnet_diagnostic.CA5375.severity = warning
+dotnet_diagnostic.CA5376.severity = warning
+dotnet_diagnostic.CA5377.severity = warning
+dotnet_diagnostic.CA5378.severity = warning
+dotnet_diagnostic.CA5379.severity = warning   # weak key derivation function algorithm
+dotnet_diagnostic.CA5380.severity = warning   # certificate added to the root store
+dotnet_diagnostic.CA5381.severity = warning
+dotnet_diagnostic.CA5382.severity = warning   # secure cookies in ASP.NET Core
+dotnet_diagnostic.CA5383.severity = warning
+dotnet_diagnostic.CA5384.severity = warning   # DSA
+dotnet_diagnostic.CA5385.severity = warning   # RSA key size
+dotnet_diagnostic.CA5386.severity = warning   # hard-coded SecurityProtocolType value
+dotnet_diagnostic.CA5387.severity = warning   # weak iteration count
+dotnet_diagnostic.CA5388.severity = warning
+dotnet_diagnostic.CA5389.severity = warning   # archive entry path (zip slip)
+dotnet_diagnostic.CA5390.severity = warning   # hard-coded encryption key
+dotnet_diagnostic.CA5391.severity = warning   # antiforgery token in MVC actions
+dotnet_diagnostic.CA5392.severity = warning   # DefaultDllImportSearchPaths
+dotnet_diagnostic.CA5393.severity = warning   # unsafe DllImportSearchPath value
+dotnet_diagnostic.CA5394.severity = warning   # insecure randomness
+dotnet_diagnostic.CA5395.severity = warning   # HttpVerb attribute on actions
+dotnet_diagnostic.CA5396.severity = warning   # HttpOnly on cookies
+dotnet_diagnostic.CA5397.severity = warning   # deprecated SslProtocols
+dotnet_diagnostic.CA5398.severity = warning   # hard-coded SslProtocols
+dotnet_diagnostic.CA5399.severity = warning   # HttpClient certificate revocation list
+dotnet_diagnostic.CA5400.severity = warning
+dotnet_diagnostic.CA5401.severity = warning   # CreateEncryptor with non-default IV
+dotnet_diagnostic.CA5402.severity = warning
+dotnet_diagnostic.CA5403.severity = warning   # hard-coded certificate
+dotnet_diagnostic.CA5404.severity = warning   # token validation checks disabled
+dotnet_diagnostic.CA5405.severity = warning
+
+# --- Other security-category rules of the SDK
+dotnet_diagnostic.CA2109.severity = warning   # review visible event handlers
+dotnet_diagnostic.CA2119.severity = warning   # seal methods that satisfy private interfaces
+
+# --- Rules of the packaged analyzers
+# Meziantou.Analyzer security-category rules (reported to DefectDojo) and the three rules that default to `error`
+# (an error would fail the instrumented SonarQube build: the lab only reports, it never breaks the project's build).
+dotnet_diagnostic.MA0009.severity = warning   # regex without a timeout (ReDoS)
+dotnet_diagnostic.MA0039.severity = warning   # own certificate validation method
+dotnet_diagnostic.MA0037.severity = warning
+dotnet_diagnostic.MA0049.severity = warning
+# SecurityCodeScan (SCS0001-SCS0034) needs no configuration: every rule is on by default.
+# ASP.NET Core security-category rule
+dotnet_diagnostic.ASP0026.severity = warning  # [AllowAnonymous] overridden by [Authorize]

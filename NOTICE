@@ -1,0 +1,9 @@
+LabSecurity
+Copyright 2026 Marco De Santis
+
+This product is licensed under the Apache License, Version 2.0 (see LICENSE).
+
+LabSecurity orchestrates third-party tools, container images and rule packs that
+are downloaded at build or run time and are not redistributed with this
+repository. Each of them is governed by its own license; see
+THIRD_PARTY_NOTICES.md.

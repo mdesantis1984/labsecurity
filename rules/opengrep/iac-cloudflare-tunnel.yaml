@@ -1,0 +1,49 @@
+# LabSecurity own rules: Cloudflare Tunnel (cloudflared) configuration. Text rule: cloudflared files are plain YAML.
+rules:
+  - id: labsec.cloudflare.tunnel-no-tls-verify
+    languages: [regex]
+    severity: WARNING
+    message: >-
+      cloudflared is configured with noTLSVerify: true, which disables certificate verification of the origin and
+      accepts any certificate it presents. Keep the default (false) and give the origin a certificate that the
+      tunnel trusts (originRequest.caPool), or reach it over a loopback address.
+    pattern-regex: '(?im)^\s*noTLSVerify\s*:\s*true\b'
+    paths:
+      include: ["*.yml", "*.yaml"]
+    metadata:
+      category: security
+      technology: [cloudflare, cloudflared, yaml]
+      cwe: "CWE-295: Improper Certificate Validation"
+      owasp: "A07:2025 - Authentication Failures"
+      asvs: [V12.3.4]
+      standard: "OWASP ASVS 5.0.0 V12.3.4; Cloudflare docs, cloudflared origin parameters (noTLSVerify)"
+      confidence: HIGH
+      subcategory: [vuln]
+      likelihood: "MEDIUM"
+      impact: "MEDIUM"
+      references:
+        - https://github.com/OWASP/ASVS/blob/v5.0.0/5.0/en/0x21-V12-Secure-Communication.md
+        - https://developers.cloudflare.com/cloudflare-one/networks/connectors/cloudflare-tunnel/configure-tunnels/cloudflared-parameters/origin-parameters/
+
+  - id: labsec.cloudflare.tunnel-ingress-no-catch-all
+    languages: [regex]
+    severity: WARNING
+    message: >-
+      The cloudflared ingress list ends with a rule that has a hostname, so there is no catch-all rule. cloudflared
+      rejects a configuration file whose ingress rules do not end with one. Finish the list with a rule that has
+      only a service, for example `- service: http_status:404`.
+    pattern-regex: "(?m)^ingress:[ \\t]*(?:#[^\\n]*)?\\n(?:(?:[ \\t][^\\n]*)?\\n)*?([ \\t]+)-[ \\t]+hostname:[^\\n]*\\n(?:(?:\\1[ \\t][^\\n]*)?\\n)*(?=[^ \\t\\n]|\\z)"
+    paths:
+      include: ["*.yml", "*.yaml"]
+    metadata:
+      category: security
+      technology: [cloudflare, cloudflared, yaml]
+      cwe: "CWE-1188: Initialization of a Resource with an Insecure Default"
+      owasp: "A02:2025 - Security Misconfiguration"
+      standard: "Cloudflare docs, cloudflared configuration file (ingress rules must end with a catch-all rule)"
+      confidence: MEDIUM
+      subcategory: [audit]
+      likelihood: "LOW"
+      impact: "LOW"
+      references:
+        - https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/configure-tunnels/local-management/configuration-file/

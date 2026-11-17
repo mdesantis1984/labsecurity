@@ -1,0 +1,127 @@
+# LabSecurity custom rules (taint mode): C# raw SQL fed by built text or by request input.
+# Both rules are designed for `opengrep scan --taint-intrafile` (what `bin/scan` runs): they follow data across
+# the methods of one file. Without the flag they still work inside a single method.
+rules:
+  - id: labsec.csharp.sql-raw-built-text-variable
+    languages: [csharp]
+    mode: taint
+    severity: ERROR
+    message: >-
+      SQL text built by concatenation, interpolation, string.Format or StringBuilder is stored in a variable and then
+      passed to a raw SQL API. Use FromSqlInterpolated / ExecuteSqlInterpolated / SqlQuery, or a constant command text
+      with NpgsqlParameter (Parameters.AddWithValue) instead.
+    metadata:
+      category: security
+      technology: [csharp, entity-framework, npgsql, ado.net]
+      cwe: "CWE-89: Improper Neutralization of Special Elements used in an SQL Command ('SQL Injection')"
+      owasp: "A05:2025 - Injection"
+      standard: "OWASP Top 10 2025 (A05)"
+      confidence: MEDIUM
+      likelihood: HIGH
+      impact: HIGH
+      subcategory: [vuln]
+      references:
+        - https://learn.microsoft.com/en-us/ef/core/querying/sql-queries#passing-parameters
+        - https://owasp.org/Top10/2025/A05_2025-Injection/
+    options:
+      taint_intrafile: true
+    pattern-sources:
+      - patterns:
+          - pattern-either:
+              - pattern: $A + $B
+              - pattern: $"..."
+              - pattern: string.Format(...)
+              - pattern: String.Format(...)
+              - pattern: new StringBuilder(...)
+          - pattern-not: '"..." + "..."'
+          - pattern-not: '"..." + "..." + "..."'
+    pattern-sinks:
+      - patterns:
+          - pattern-either:
+              - pattern: $X.FromSqlRaw($SQL, ...)
+              - pattern: $X.ExecuteSqlRaw($SQL, ...)
+              - pattern: $X.ExecuteSqlRawAsync($SQL, ...)
+              - pattern: $X.SqlQueryRaw<$T>($SQL, ...)
+              - pattern: new NpgsqlCommand($SQL, ...)
+              - pattern: new SqlCommand($SQL, ...)
+              - pattern: new SqliteCommand($SQL, ...)
+              - pattern: new MySqlCommand($SQL, ...)
+              - pattern: $X.CommandText = $SQL
+          - metavariable-regex:
+              metavariable: $SQL
+              regex: '^[A-Za-z_][A-Za-z0-9_]*(\.ToString\(\))?$'
+          - focus-metavariable: $SQL
+
+  - id: labsec.csharp.sql-raw-tainted-input
+    languages: [csharp]
+    mode: taint
+    severity: ERROR
+    message: >-
+      Request input or a method parameter reaches the text of a raw SQL API (FromSqlRaw, ExecuteSqlRaw, SqlQueryRaw,
+      NpgsqlCommand, CommandText). Pass values with FromSqlInterpolated / ExecuteSqlInterpolated / SqlQuery or
+      NpgsqlParameter and keep the command text constant.
+    metadata:
+      category: security
+      technology: [csharp, entity-framework, npgsql, ado.net, aspnetcore]
+      cwe: "CWE-89: Improper Neutralization of Special Elements used in an SQL Command ('SQL Injection')"
+      owasp: "A05:2025 - Injection"
+      standard: "OWASP Top 10 2025 (A05)"
+      confidence: MEDIUM
+      likelihood: MEDIUM
+      impact: HIGH
+      subcategory: [vuln]
+      references:
+        - https://learn.microsoft.com/en-us/ef/core/querying/sql-queries#passing-parameters
+        - https://owasp.org/Top10/2025/A05_2025-Injection/
+    options:
+      taint_intrafile: true
+    pattern-sources:
+      - pattern-either:
+          - pattern: $R.Query[...]
+          - pattern: $R.Form[...]
+          - pattern: $R.Headers[...]
+          - pattern: $R.Cookies[...]
+          - pattern: $R.RouteValues[...]
+          - patterns:
+              - pattern-either:
+                  - pattern: $T $F(..., string $P, ...) { ... }
+                  - pattern: $T $F(..., string $P, ...) => $BODY
+              - focus-metavariable: $P
+          - patterns:
+              - pattern-either:
+                  - pattern: $APP.$M($ROUTE, (..., string $P, ...) => ...)
+                  - pattern: $APP.$M($ROUTE, (..., string $P, ...) => { ... })
+                  - pattern: $APP.$M($ROUTE, async (..., string $P, ...) => { ... })
+              - metavariable-regex:
+                  metavariable: $M
+                  regex: '^Map(Get|Post|Put|Delete|Patch)$'
+              - focus-metavariable: $P
+    pattern-sanitizers:
+      - pattern-either:
+          - pattern: int.Parse(...)
+          - pattern: long.Parse(...)
+          - pattern: decimal.Parse(...)
+          - pattern: Guid.Parse(...)
+          - pattern: Convert.ToInt32(...)
+          - pattern: Convert.ToInt64(...)
+    pattern-sinks:
+      - patterns:
+          - pattern-either:
+              - pattern: $X.FromSqlRaw($SQL, ...)
+              - pattern: $X.ExecuteSqlRaw($SQL, ...)
+              - pattern: $X.ExecuteSqlRawAsync($SQL, ...)
+              - pattern: $X.SqlQueryRaw<$T>($SQL, ...)
+              - pattern: new NpgsqlCommand($SQL, ...)
+              - pattern: new SqlCommand($SQL, ...)
+              - pattern: new SqliteCommand($SQL, ...)
+              - pattern: new MySqlCommand($SQL, ...)
+              - pattern: $X.CommandText = $SQL
+          # Text built in place is already reported, with higher confidence, by labsec.csharp.sql-raw-built-text.
+          - metavariable-pattern:
+              metavariable: $SQL
+              patterns:
+                - pattern-not: $A + $B
+                - pattern-not: $"..."
+                - pattern-not: string.Format(...)
+                - pattern-not: String.Format(...)
+          - focus-metavariable: $SQL

@@ -1,0 +1,19 @@
+// Fixtures for rules/opengrep/iac-cloudflare-wrangler.yaml. The values are obvious placeholders.
+{
+  "name": "example-worker",
+  // ruleid: labsec.cloudflare.wrangler-vars-literal-secret
+  "vars": {
+    "API_HOST": "api.example.test",
+    "AUTH_TOKEN": "placeholder-value"
+  },
+  "env": {
+    "staging": {
+      // ruleid: labsec.cloudflare.wrangler-vars-literal-secret
+      "vars": { "client_secret": "placeholder-value" }
+    },
+    "production": {
+      // ok: labsec.cloudflare.wrangler-vars-literal-secret
+      "vars": { "API_HOST": "api.example.test", "ADMIN_PASSWORD": "", "PUBLIC_KEY_ID": "placeholder-value" }
+    }
+  }
+}

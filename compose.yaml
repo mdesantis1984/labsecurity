@@ -1,0 +1,287 @@
+# LabSecurity - self-hosted AppSec lab.
+# Start everything:   docker compose up -d
+# Stop when unused:   docker compose stop
+# Prerequisite:       ./scripts/init.sh   (generates .env and the secret files under ~/.config/labsecurity)
+#
+# Rules:
+# - Every published port binds to 127.0.0.1 only.
+# - Always on: long-running services use restart: unless-stopped, so they come back after a reboot or a
+#   Docker restart. The one-shot dd-initializer keeps restart: "no" (it must not loop).
+# - Every image is pinned by version AND digest; see docs/VERSIONS.md for the verification date.
+# - Scanners live in the "tools" profile: they are one-shot containers launched by `bin/scan`,
+#   so `docker compose up -d` never starts them.
+
+name: labsecurity
+
+x-no-restart: &no-restart
+  restart: unless-stopped
+
+x-dd-image: &dd-image
+  image: docker.io/defectdojo/defectdojo-django:3.5.200@sha256:a72b66bf249b3d3ead62d14ed7026486eca5ebe6e5a784528eac11fa6fac7a38
+
+x-dd-env: &dd-env
+  DD_DEBUG: "False"
+  DD_ALLOWED_HOSTS: "localhost,127.0.0.1,nginx,uwsgi"
+  DD_SITE_URL: "http://127.0.0.1:${DD_PORT:-19080}"
+  DD_CELERY_BROKER_URL: "redis://valkey:6379/0"
+  DD_CACHE_URL: "redis://valkey:6379/1"
+  DD_DATABASE_READINESS_TIMEOUT: "60"
+  DD_DJANGO_METRICS_ENABLED: "False"
+
+x-dd-secrets: &dd-secrets
+  env_file:
+    - path: ${LABSEC_CONFIG_DIR:?run ./scripts/init.sh first}/defectdojo.vars
+      required: true
+
+services:
+  # ---------------------------------------------------------------- SonarQube
+  sonar-db:
+    <<: *no-restart
+    image: docker.io/library/postgres:18.6-alpine@sha256:9ba53c7d41ea093baf5c1ba635ba5434c4f979880527d49bb7d9237d3193085b
+    env_file:
+      - path: ${LABSEC_CONFIG_DIR:?run ./scripts/init.sh first}/sonar-db.vars
+        required: true
+    environment:
+      POSTGRES_DB: sonarqube
+      POSTGRES_USER: sonarqube
+      PGDATA: /var/lib/postgresql/data
+    volumes:
+      - sonar_db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sonarqube -d sonarqube"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
+  sonarqube:
+    <<: *no-restart
+    image: docker.io/library/sonarqube:26.11.0.134175-community@sha256:65541accbdb92e27fe770fc6ba99988a3dd5a0c71ffafd67f88abfad366996fa
+    depends_on:
+      sonar-db:
+        condition: service_healthy
+    env_file:
+      - path: ${LABSEC_CONFIG_DIR:?run ./scripts/init.sh first}/sonarqube.vars
+        required: true
+    environment:
+      SONAR_JDBC_URL: jdbc:postgresql://sonar-db:5432/sonarqube
+      SONAR_JDBC_USERNAME: sonarqube
+      SONAR_TELEMETRY_ENABLE: "false"
+    ulimits:
+      nofile:
+        soft: 131072
+        hard: 131072
+      nproc:
+        soft: 8192
+        hard: 8192
+    volumes:
+      - sonar_data:/opt/sonarqube/data
+      - sonar_extensions:/opt/sonarqube/extensions
+      - sonar_logs:/opt/sonarqube/logs
+    ports:
+      - "127.0.0.1:${SONAR_PORT:-19000}:9000"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:9000/api/system/status | grep -q '\"status\":\"UP\"'"]
+      interval: 15s
+      timeout: 10s
+      retries: 40
+      start_period: 60s
+
+  # ---------------------------------------------------------------- DefectDojo
+  dd-db:
+    <<: *no-restart
+    image: docker.io/library/postgres:18.6-alpine@sha256:9ba53c7d41ea093baf5c1ba635ba5434c4f979880527d49bb7d9237d3193085b
+    env_file:
+      - path: ${LABSEC_CONFIG_DIR:?run ./scripts/init.sh first}/dd-db.vars
+        required: true
+    environment:
+      POSTGRES_DB: defectdojo
+      POSTGRES_USER: defectdojo
+      PGDATA: /var/lib/postgresql/data
+    volumes:
+      - dd_db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U defectdojo -d defectdojo"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
+  valkey:
+    <<: *no-restart
+    image: docker.io/valkey/valkey:9.1.2-alpine@sha256:48332870af354a799964c0012ae1194a0bf2bf894eb508f945810596dc2d8d11
+    volumes:
+      - dd_valkey:/data
+    healthcheck:
+      test: ["CMD", "valkey-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
+  # One-shot: runs migrations and creates the admin user, then exits 0.
+  # A healthcheck does not apply to a job; `scan --doctor` checks its exit code instead.
+  dd-initializer:
+    <<: [*no-restart, *dd-image, *dd-secrets]
+    restart: "no"
+    depends_on:
+      dd-db:
+        condition: service_healthy
+    entrypoint: ["/wait-for-it.sh", "dd-db:5432", "--", "/entrypoint-initializer.sh"]
+    environment:
+      <<: *dd-env
+      DD_ADMIN_USER: admin
+      DD_ADMIN_MAIL: admin@labsecurity.local
+      DD_ADMIN_FIRST_NAME: Lab
+      DD_ADMIN_LAST_NAME: Admin
+      DD_INITIALIZE: "true"
+
+  dd-uwsgi:
+    <<: [*no-restart, *dd-image, *dd-secrets]
+    depends_on:
+      dd-initializer:
+        condition: service_completed_successfully
+      valkey:
+        condition: service_healthy
+    entrypoint: ["/wait-for-it.sh", "dd-db:5432", "-t", "60", "--", "/entrypoint-uwsgi.sh"]
+    environment:
+      <<: *dd-env
+    volumes:
+      - dd_media:/app/media
+    healthcheck:
+      test: ["CMD", "python3", "-c", "import socket; socket.create_connection(('127.0.0.1', 3031), 3)"]
+      interval: 15s
+      timeout: 5s
+      retries: 20
+      start_period: 30s
+
+  dd-celerybeat:
+    <<: [*no-restart, *dd-image, *dd-secrets]
+    depends_on:
+      dd-initializer:
+        condition: service_completed_successfully
+      valkey:
+        condition: service_healthy
+    entrypoint: ["/wait-for-it.sh", "dd-db:5432", "-t", "60", "--", "/entrypoint-celery-beat.sh"]
+    environment:
+      <<: *dd-env
+    healthcheck:
+      test: ["CMD", "python3", "-c", "import glob,sys; sys.exit(0 if any(b'beat' in open(p,'rb').read() for p in glob.glob('/proc/[0-9]*/cmdline')) else 1)"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  dd-celeryworker:
+    <<: [*no-restart, *dd-image, *dd-secrets]
+    depends_on:
+      dd-initializer:
+        condition: service_completed_successfully
+      valkey:
+        condition: service_healthy
+    entrypoint: ["/wait-for-it.sh", "dd-db:5432", "-t", "60", "--", "/entrypoint-celery-worker.sh"]
+    environment:
+      <<: *dd-env
+    volumes:
+      - dd_media:/app/media
+    healthcheck:
+      test: ["CMD", "python3", "-c", "import glob,sys; sys.exit(0 if any(b'worker' in open(p,'rb').read() for p in glob.glob('/proc/[0-9]*/cmdline')) else 1)"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  dd-nginx:
+    <<: *no-restart
+    image: docker.io/defectdojo/defectdojo-nginx:3.5.200@sha256:830957d21a5a3bb04ce4a02d7e7c6f88732e4fa087f0bc9d1edd8bbc76f6e134
+    depends_on:
+      dd-uwsgi:
+        condition: service_healthy
+    environment:
+      NGINX_METRICS_ENABLED: "false"
+      DD_UWSGI_HOST: dd-uwsgi
+      DD_UWSGI_PORT: "3031"
+    volumes:
+      - dd_media:/usr/share/nginx/html/media
+    ports:
+      - "127.0.0.1:${DD_PORT:-19080}:8080"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:8080/login || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 20
+      start_period: 20s
+
+  # ---------------------------------------------------------------- Scanners (profile: tools)
+  # One-shot containers started by `bin/scan` with `docker compose run --rm`, as the invoking host user.
+# Caches are host directories (created by bin/scan, owned by the user) so non-root containers can write them.
+  opengrep:
+    profiles: ["tools"]
+    build:
+      context: ./docker/opengrep
+    image: labsecurity/opengrep:2.0.0-r2
+    network_mode: none
+
+  # LabSecurity's own ESLint config and pinned plugins (docker/eslint/package-lock.json); lints the work copy offline.
+  eslint:
+    profiles: ["tools"]
+    build:
+      context: ./docker/eslint
+    image: labsecurity/eslint:10.15.0
+    network_mode: none
+
+  gitleaks:
+    profiles: ["tools"]
+    image: docker.io/zricethezav/gitleaks:v8.30.1@sha256:c00b6bd0aeb3071cbcb79009cb16a60dd9e0a7c60e2be9ab65d25e6bc8abbb7f
+    network_mode: none
+
+  trivy:
+    profiles: ["tools"]
+    image: docker.io/aquasec/trivy:0.76.2@sha256:8f6bb947dbc528902e11f2f5be52f7b519f6a39d5d148f41166f2040499768fb
+    environment:
+      TRIVY_CACHE_DIR: /cache
+      HOME: /tmp
+    volumes:
+      - ${LABSEC_CACHE_DIR:-${HOME}/.cache/labsecurity}/tool-cache/trivy:/cache
+
+  sonar-scanner:
+    profiles: ["tools"]
+    # Upstream publishes this image for linux/amd64 only: Apple Silicon and arm64 hosts run it through emulation.
+    platform: linux/amd64
+    image: docker.io/sonarsource/sonar-scanner-cli:12.4.0.4321_8.4.0@sha256:6e6eca4d552695a98fb7dab84f0c1bd0885ebbfe272654d1552e24bd7f452d51
+    environment:
+      SONAR_HOST_URL: http://sonarqube:9000
+      SONAR_USER_HOME: /cache
+      HOME: /tmp
+    volumes:
+      - ${LABSEC_CACHE_DIR:-${HOME}/.cache/labsecurity}/tool-cache/sonar-scanner:/cache
+
+  dotnet:
+    profiles: ["tools"]
+    build:
+      context: ./docker/dotnet
+    image: labsecurity/dotnet-analyzers:10.0.404-r2
+    environment:
+      SONAR_HOST_URL: http://sonarqube:9000
+      DOTNET_CLI_TELEMETRY_OPTOUT: "1"
+      DOTNET_NOLOGO: "1"
+      HOME: /cache/home
+      DOTNET_CLI_HOME: /cache/home
+      NUGET_PACKAGES: /cache/nuget
+    volumes:
+      - ${LABSEC_CACHE_DIR:-${HOME}/.cache/labsecurity}/tool-cache/dotnet:/cache
+
+  # ZAP uses the host network so 127.0.0.1 means the host loopback (local test targets only).
+  # `bin/scan` refuses any target that is not a loopback address.
+  zap:
+    profiles: ["tools"]
+    build:
+      context: ./docker/zap
+    image: labsecurity/zap:2.17.0-r2
+    network_mode: host
+
+volumes:
+  sonar_db: {}
+  sonar_data: {}
+  sonar_extensions: {}
+  sonar_logs: {}
+  dd_db: {}
+  dd_valkey: {}
+  dd_media: {}

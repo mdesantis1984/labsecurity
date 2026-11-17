@@ -1,0 +1,47 @@
+version: 2
+updates:
+  - package-ecosystem: uv
+    directory: /
+    target-branch: develop
+    labels: ["type:chore"]
+    schedule:
+      interval: weekly
+      day: monday
+  - package-ecosystem: npm
+    directory: /docker/eslint
+    target-branch: develop
+    labels: ["type:chore"]
+    schedule:
+      interval: weekly
+      day: monday
+  - package-ecosystem: github-actions
+    directory: /
+    target-branch: develop
+    labels: ["type:chore"]
+    schedule:
+      interval: weekly
+      day: monday
+    groups:
+      actions:
+        patterns: ["*"]
+  - package-ecosystem: docker
+    directories:
+      - /docker/dotnet
+      - /docker/eslint
+      - /docker/opengrep
+      - /docker/zap
+    target-branch: develop
+    labels: ["type:chore"]
+    schedule:
+      interval: weekly
+      day: monday
+  - package-ecosystem: docker-compose
+    directory: /
+    target-branch: develop
+    labels: ["type:chore"]
+    schedule:
+      interval: weekly
+      day: monday
+    ignore:
+      - dependency-name: postgres
+        update-types: ["version-update:semver-major"]

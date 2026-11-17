@@ -1,0 +1,48 @@
+# LabSecurity own rules: OpenSSH server configuration committed to a repository (images, Ansible roles, dotfiles).
+# Text rules: sshd_config is a plain "Keyword value" file. Both rules come from the Azure Linux security baseline,
+# which quotes the CIS Distribution Independent Linux benchmark (Level 1, Server).
+rules:
+  - id: labsec.sshd.permit-root-login
+    languages: [regex]
+    severity: WARNING
+    message: >-
+      sshd_config sets PermitRootLogin to something other than "no". Root can then log in over SSH, and an attacker can
+      brute-force the root account. Set `PermitRootLogin no` and use a named account with sudo. A Match block that
+      needs an exception should be reviewed by a person.
+    pattern-regex: '(?im)^[ \t]*PermitRootLogin(?:[ \t]*=[ \t]*|[ \t]+)(?!"?no"?[ \t]*(?:#[^\n]*)?$)[^\s#][^\n]*'
+    paths:
+      include: ["sshd_config", "sshd_config.*", "*.sshd_config", "sshd_config.d/*.conf"]
+    metadata:
+      category: security
+      technology: [openssh, linux]
+      cwe: "CWE-250: Execution with Unnecessary Privileges"
+      owasp: "A02:2025 - Security Misconfiguration"
+      standard: "Azure Linux security baseline (guest configuration): Root login via SSH should be disabled, PermitRootLogin = no (CIS Distribution Independent Linux, L1 - Server, 5.2.10)"
+      confidence: HIGH
+      subcategory: [vuln]
+      likelihood: "MEDIUM"
+      impact: "HIGH"
+      references:
+        - https://learn.microsoft.com/en-us/azure/governance/policy/samples/guest-configuration-baseline-linux
+
+  - id: labsec.sshd.permit-empty-passwords
+    languages: [regex]
+    severity: ERROR
+    message: >-
+      sshd_config sets PermitEmptyPasswords to yes, which lets accounts with an empty password log in over SSH. Set
+      `PermitEmptyPasswords no`.
+    pattern-regex: '(?im)^[ \t]*PermitEmptyPasswords(?:[ \t]*=[ \t]*|[ \t]+)"?yes"?[ \t]*(?:#[^\n]*)?$'
+    paths:
+      include: ["sshd_config", "sshd_config.*", "*.sshd_config", "sshd_config.d/*.conf"]
+    metadata:
+      category: security
+      technology: [openssh, linux]
+      cwe: "CWE-258: Empty Password in Configuration File"
+      owasp: "A07:2025 - Authentication Failures"
+      standard: "Azure Linux security baseline (guest configuration): PermitEmptyPasswords = no (CIS Distribution Independent Linux, L1 - Server, 5.2.11)"
+      confidence: HIGH
+      subcategory: [vuln]
+      likelihood: "HIGH"
+      impact: "HIGH"
+      references:
+        - https://learn.microsoft.com/en-us/azure/governance/policy/samples/guest-configuration-baseline-linux

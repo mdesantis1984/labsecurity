@@ -1,0 +1,74 @@
+name: Bug report
+description: Report a reproducible defect
+title: "fix: "
+labels: ["type:bug"]
+body:
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: State the observed and expected behavior.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Reproduction
+      description: List the minimal steps needed to reproduce the defect.
+      placeholder: |
+        1. Start from...
+        2. Run...
+        3. Observe...
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: Include the revision, target, and relevant configuration without secrets.
+    validations:
+      required: true
+  - type: dropdown
+    id: component
+    attributes:
+      label: Component
+      description: Select the part of LabSecurity that is affected.
+      options:
+        - CLI (labsec, bin/scan)
+        - Lab services (compose.yaml, scripts)
+        - Opengrep rules
+        - Scanner images (docker/)
+        - Agent skill
+        - Documentation
+        - Other
+    validations:
+      required: true
+  - type: dropdown
+    id: delivery-impact
+    attributes:
+      label: Delivery impact
+      description: Select every impact that applies, or explicitly select no user-facing impact.
+      multiple: true
+      options:
+        - Documentation change required
+        - Public API change
+        - Migration required
+        - Compatibility change
+        - Release note required
+        - No user-facing impact
+    validations:
+      required: true
+  - type: textarea
+    id: impact-evidence
+    attributes:
+      label: Impact evidence
+      description: Name affected documents and tests, or justify why the selected impact is absent.
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Evidence
+      description: Add sanitized logs, screenshots, or other diagnostic evidence.
+    validations:
+      required: false
