@@ -56,6 +56,31 @@ rules:
       - pattern-not: $EL.innerHTML = ''
       - pattern-not: $EL.outerHTML = ""
       - pattern-not: $EL.outerHTML = ''
+      # A detached <template> element is inert: scripts do not run and resources do not load until its content is
+      # attached to the document, so writing markup into it is not an injection by itself. Only a variable that is
+      # created right here with document.createElement('template') qualifies; every other element keeps the finding.
+      - pattern-not: document.createElement('template').innerHTML = $VALUE
+      - pattern-not-inside: |
+          const $EL = document.createElement('template');
+          ...
+      - pattern-not-inside: |
+          let $EL = document.createElement('template');
+          ...
+      - pattern-not-inside: |
+          var $EL = document.createElement('template');
+          ...
+      - pattern-not-inside: |
+          const $EL = document.createElement('template') as $T;
+          ...
+      - pattern-not-inside: |
+          let $EL = document.createElement('template') as $T;
+          ...
+      - pattern-not-inside: |
+          const $EL: $T = document.createElement('template');
+          ...
+      - pattern-not-inside: |
+          let $EL: $T = document.createElement('template');
+          ...
 
   - id: labsec.angular.bypass-security-trust
     languages: [typescript, javascript]

@@ -140,6 +140,8 @@ Totals can move by one or two rules when SonarQube updates a plugin; `--bootstra
 | Gitleaks | lockfiles and `*.min.js` (global allowlist) | high-entropy hashes that are not secrets |
 | Opengrep packs | `rules/gitlab` of GitLab `sast-rules` | GitLab EE license; not vendored |
 | Opengrep packs | rules that do not parse (1 today) | removed at build time by `prune-invalid.sh`; recorded in `EXCLUDED` |
+| Scan scope | files ignored by the repository's `.gitignore`, `.agents/**`, `**/*.min.js`, `**/*.min.mjs`, `**/node_modules/**`, nested repositories, source files with a line longer than 5000 bytes | linked worktrees, local SDKs, package caches, vendored agent skills and minified bundles are not the project's code; what is excluded, per reason, is in every run summary (see [CLI.md](CLI.md#what-gets-scanned)) |
+| Trivy | `.cache` and `.toolchain` directories (`--skip-dirs`) | `*.deps.json` files of a package cache or a local SDK carry third-party CVEs, not the project's |
 | Trivy | `secrets` and `license` scanners | secrets stay with Gitleaks (it also reads history); license findings are not security rules |
 
 ## Looked at and not used
@@ -190,11 +192,11 @@ All ids start with `labsec.`. Every rule carries `metadata.category: security`, 
 
 | Rule id | File | Mode | Severity | CWE | Catches |
 | --- | --- | --- | --- | --- | --- |
-| `labsec.csharp.sql-raw-built-text` | `csharp-sql-injection.yaml` | pattern | ERROR | 89 | `FromSqlRaw`, `ExecuteSqlRaw`, `ExecuteSqlRawAsync`, `SqlQueryRaw<T>`, `new NpgsqlCommand/SqlCommand/SqliteCommand/MySqlCommand(...)` and `.CommandText =` whose text is a concatenation (`+`), an interpolated string (`$"..."`) or `string.Format(...)` written in place |
+| `labsec.csharp.sql-raw-built-text` | `csharp-sql-injection.yaml` | pattern | ERROR | 89 | `FromSqlRaw`, `ExecuteSqlRaw`, `ExecuteSqlRawAsync`, `SqlQueryRaw<T>`, `new NpgsqlCommand/SqlCommand/SqliteCommand/MySqlCommand(...)` and `.CommandText =` whose text is a concatenation (`+`), an interpolated string (`$"..."`) or `string.Format(...)` written in place. Not reported: text whose interpolation holes are all `const` values, `nameof(...)` or literals, or a concatenation of `const` values |
 | `labsec.csharp.sql-raw-built-text-variable` | `csharp-sql-taint.yaml` | taint | ERROR | 89 | the same sinks when the text was built first (concatenation, interpolation, `string.Format`, `new StringBuilder`) and reaches the sink through a local variable or `sb.ToString()` |
-| `labsec.csharp.sql-raw-tainted-input` | `csharp-sql-taint.yaml` | taint (intrafile) | ERROR | 89 | request input (`Request.Query/Form/Headers/Cookies/RouteValues[...]`) or a `string` method / minimal-API lambda parameter reaching the text of those sinks, across the methods of one file, for example `Handler -> Lookup -> Run -> FromSqlRaw(Compose(value))`. Parsing with `int.Parse`, `long.Parse`, `decimal.Parse`, `Guid.Parse` or `Convert.ToInt32/64` sanitizes |
+| `labsec.csharp.sql-raw-tainted-input` | `csharp-sql-taint.yaml` | taint (intrafile) | ERROR | 89 | request input (`Request.Query/Form/Headers/Cookies/RouteValues[...]`) or a `string` method / minimal-API lambda parameter reaching the text of those sinks, across the methods of one file, for example `Handler -> Lookup -> Run -> FromSqlRaw(Compose(value))`. Parsing with `int.Parse`, `long.Parse`, `decimal.Parse`, `Guid.Parse` or `Convert.ToInt32/64` sanitizes. Text whose interpolation holes are all `const`, `nameof(...)` or literals is not a source |
 | `labsec.angular.inner-html-binding` | `angular-ts-xss.yaml` | regex | WARNING | 79 | `[innerHTML]` and `[outerHTML]` bindings in `.html` templates and in inline templates inside `.ts` files |
-| `labsec.typescript.dom-html-assignment` | `angular-ts-xss.yaml` | pattern | ERROR | 79 | `el.innerHTML = x`, `+=`, `el.outerHTML = x`, `el.insertAdjacentHTML(pos, x)` (assigning `''` is allowed) |
+| `labsec.typescript.dom-html-assignment` | `angular-ts-xss.yaml` | pattern | ERROR | 79 | `el.innerHTML = x`, `+=`, `el.outerHTML = x`, `el.insertAdjacentHTML(pos, x)` (assigning `''` is allowed). Not reported: a variable created in the same scope with `document.createElement('template')`: a detached `<template>` is inert |
 | `labsec.angular.bypass-security-trust` | `angular-ts-xss.yaml` | pattern | ERROR | 79 | `bypassSecurityTrustHtml`, `...Script`, `...Style`, `...Url`, `...ResourceUrl` |
 | `labsec.typescript.document-write` | `angular-ts-xss.yaml` | pattern | ERROR | 79 | `document.write(...)`, `document.writeln(...)` (also through `window.`) |
 | `labsec.typescript.dynamic-code-execution` | `angular-ts-xss.yaml` | pattern | ERROR | 95 | `eval(...)`, `new Function(...)`, `Function(...)`, `setTimeout/setInterval` with a string, template literal or concatenated first argument |
@@ -343,6 +345,17 @@ built) and `sql-raw-tainted-input` (where it came from). Text built in place is 
 - `new StringBuilder(...)` is treated as built text even if only constants are appended: constant-only builders are rare in
   SQL code, and the rule prefers a false positive to a missed injection.
 - The regex rule also matches an `[innerHTML]` string inside a comment or documentation snippet.
+- C# SQL rules treat as constant only: `const` fields and locals (constant propagation), literals, numbers and
+  `nameof(...)` as interpolation holes. `static readonly` strings, properties, method calls and a concatenation that
+  mixes `nameof(...)` with other operands are not constants: they stay findings. A helper whose `string sql` parameter
+  reaches `FromSqlRaw(sql, args)` is reported (`sql-raw-tainted-input`) even when every caller passes a constant; mark
+  it as a false positive with the file:line of the callers.
+- `labsec.typescript.dom-html-assignment` skips a detached `<template>`, so the later insertion of `template.content`
+  into the live document is the step that matters; it is not reported by this rule.
+- Known false positive of an upstream pack: GitLab `rules_lgpl_javascript_ssrf_rule-node-ssrf` reports a call to a
+  function parameter that happens to be named `fetch` (an injected callback, not the global `fetch`). The pack is not
+  edited here and no filter is applied, because telling the callback from the global needs scope information; triage it
+  with `labsec mark-fp` and the file:line of the parameter declaration.
 
 ## Per-project rules (`.appsec.yml`)
 
