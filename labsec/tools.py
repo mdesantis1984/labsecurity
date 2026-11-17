@@ -11,12 +11,11 @@ from datetime import datetime
 from pathlib import Path
 from typing import Callable
 
-from labsec import reports, standards
+from labsec import reports, scope as scope_mod, standards
 from labsec.appsec import AppSecConfig
 from labsec.config import Paths, private_dir
 from labsec.docker import Compose
 from labsec.guard import ensure_loopback
-from labsec.langs import SKIP_DIRS
 from labsec.sonar import SonarClient
 
 # Languages that have community Opengrep rules in the image, mapped to the rule directories to load.
@@ -93,6 +92,7 @@ class Ctx:
     project_vars: dict
     log: Callable[[str], None]
     started: datetime
+    scope: scope_mod.Scope | None = None
 
     @property
     def raw(self) -> Path:
@@ -147,17 +147,12 @@ def resolve_branch(project: Path, requested: str | None) -> tuple[str, str | Non
 
 # ----------------------------------------------------------------------------- work copy
 def prepare_work_copy(ctx: Ctx) -> None:
+    """Copy exactly the scan scope (see labsec.scope) into the disposable work directory."""
     if shutil.which("rsync") is None:
         raise RuntimeError("rsync is required on the host (it builds the disposable work copy)")
-    work = private_dir(ctx.work)
-    cmd = ["rsync", "-a", "--no-owner", "--no-group", "--delete", "--delete-excluded"]
-    for name in sorted(SKIP_DIRS):
-        cmd.append(f"--exclude={name}")
-    cmd += [f"--exclude={pattern}" for pattern in ctx.appsec.exclude]
-    cmd += [f"{ctx.project}/", f"{work}/"]
-    proc = subprocess.run(cmd, capture_output=True, text=True, check=False)
-    if proc.returncode != 0:
-        raise RuntimeError(f"rsync failed ({proc.returncode}): {proc.stderr.strip()[:300]}")
+    if ctx.scope is None:
+        ctx.scope = scope_mod.build_scope(ctx.project, ctx.appsec.exclude)
+    scope_mod.sync_work_copy(ctx.project, private_dir(ctx.work), ctx.scope)
 
 
 def _tool_dir(ctx: Ctx, name: str) -> Path:
@@ -290,6 +285,12 @@ def trivy_command() -> list[str]:
         "--output",
         "/out/trivy.json",
         "--no-progress",
+        # Package caches and local SDKs hold third-party *.deps.json files: their CVEs are not the project's findings.
+        # (The work copy already leaves gitignored directories out; this is the second line of defence.)
+        "--skip-dirs",
+        "**/.cache",
+        "--skip-dirs",
+        "**/.toolchain",
         "--timeout",
         "20m",
         "/src",

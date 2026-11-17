@@ -18,7 +18,7 @@ from labsec.lock import HeavyLock, LockBusy
 from labsec.redact import redact
 from labsec.sonar import SonarClient
 from labsec.summary import EXIT_FAILURE, build_summary, exit_code, render_json, render_text
-from labsec import tools
+from labsec import scope as scope_mod, tools
 
 EXIT_USAGE = 1
 ZERO_COUNTS = {"new": 0, "open": 0, "closed": 0, "blocking": {}}
@@ -109,8 +109,8 @@ def _locked_scan(paths, project, slug, branch, commit, run_id, started, appsec, 
     private_dir(paths.tool_cache_dir)
     for cache in ("trivy", "sonar-scanner", "dotnet"):
         private_dir(paths.tool_cache_dir / cache)
-    excludes = appsec.exclude
-    langs = detect_languages(project, excludes)
+    scan_scope = scope_mod.build_scope(project, appsec.exclude)
+    langs = detect_languages(project, files=scan_scope.files)
     _log(f"project {slug} @ {branch}; languages: {', '.join(f'{k}({v})' for k, v in sorted(langs.items())) or 'none'}")
     ctx = tools.Ctx(
         paths=paths,
@@ -128,6 +128,7 @@ def _locked_scan(paths, project, slug, branch, commit, run_id, started, appsec, 
         project_vars=project_vars,
         log=_log,
         started=started,
+        scope=scan_scope,
     )
     errors: list[str] = []
     try:
@@ -212,6 +213,7 @@ def _locked_scan(paths, project, slug, branch, commit, run_id, started, appsec, 
         counts=counts,
         blocking_findings=blocking_findings,
         errors=errors,
+        scope=scan_scope.to_summary(),
     )
     summary_path = run_dir / "summary.json"
     summary_path.write_text(render_json(summary), encoding="utf-8")

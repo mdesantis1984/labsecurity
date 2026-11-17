@@ -84,4 +84,47 @@ export class DomExamples {
   }
 
   tick(): void {}
+
+  // A detached <template> is inert: scripts do not run and resources do not load until its content is attached.
+  inertTemplates(value: string): void {
+    const tpl = document.createElement('template');
+    // ok: labsec.typescript.dom-html-assignment
+    tpl.innerHTML = value;
+
+    const quoted = document.createElement("template");
+    // ok: labsec.typescript.dom-html-assignment
+    quoted.innerHTML = '<b>' + value + '</b>';
+
+    let reassigned = document.createElement('template');
+    // ok: labsec.typescript.dom-html-assignment
+    reassigned.innerHTML = `<i>${value}</i>`;
+
+    const typed = document.createElement('template') as HTMLTemplateElement;
+    // ok: labsec.typescript.dom-html-assignment
+    typed.innerHTML = value;
+
+    const annotated: HTMLTemplateElement = document.createElement('template');
+    // ok: labsec.typescript.dom-html-assignment
+    annotated.innerHTML = value;
+
+    // ok: labsec.typescript.dom-html-assignment
+    document.createElement('template').innerHTML = value;
+  }
+
+  // Only a template element is inert: any other element, or a template that is not created here, keeps the finding.
+  liveElements(value: string, other: HTMLElement): void {
+    const div = document.createElement('div');
+    // ruleid: labsec.typescript.dom-html-assignment
+    div.innerHTML = value;
+
+    const tpl = document.createElement('template');
+    // ruleid: labsec.typescript.dom-html-assignment
+    other.innerHTML = value;
+
+    // ruleid: labsec.typescript.dom-html-assignment
+    div.insertAdjacentHTML('beforeend', value);
+
+    // ruleid: labsec.typescript.dom-html-assignment
+    document.body.innerHTML = value;
+  }
 }

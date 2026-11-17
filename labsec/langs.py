@@ -49,21 +49,34 @@ def is_excluded(rel_path: str, patterns) -> bool:
         pat = pattern.strip("/")
         if not pat:
             continue
-        if fnmatch.fnmatch(rel_path, pat):
-            return True
-        # Any leading directory chain matches (exclude "legacy" covers "legacy/old/c.py").
-        for i in range(1, len(parts)):
-            if fnmatch.fnmatch("/".join(parts[:i]), pat):
+        # `**/x` also matches `x` at the project root (fnmatch needs a slash for the leading `**/`).
+        variants = [pat, pat[3:]] if pat.startswith("**/") and len(pat) > 3 else [pat]
+        for candidate in variants:
+            if fnmatch.fnmatch(rel_path, candidate):
                 return True
-        if pat.endswith("/**") and fnmatch.fnmatch(rel_path, pat[:-3] + "/*"):
-            return True
+            # Any leading directory chain matches (exclude "legacy" covers "legacy/old/c.py").
+            for i in range(1, len(parts)):
+                if fnmatch.fnmatch("/".join(parts[:i]), candidate):
+                    return True
+            if candidate.endswith("/**") and fnmatch.fnmatch(rel_path, candidate[:-3] + "/*"):
+                return True
     return False
 
 
-def detect_languages(root: Path, excludes=()) -> dict[str, int]:
-    """Count source files per language under `root` (read-only walk)."""
+def detect_languages(root: Path, excludes=(), files=None) -> dict[str, int]:
+    """Count source files per language under `root` (read-only).
+
+    `files` (relative POSIX paths, from labsec.scope) replaces the directory walk: the languages then come from the
+    exact files the scanners will see.
+    """
     root = Path(root)
     counts: dict[str, int] = {}
+    if files is not None:
+        for rel in files:
+            language = _language_of(rel.rsplit("/", 1)[-1])
+            if language:
+                counts[language] = counts.get(language, 0) + 1
+        return counts
     for dirpath, dirnames, filenames in os.walk(root):
         rel_dir = os.path.relpath(dirpath, root)
         rel_dir = "" if rel_dir == "." else rel_dir.replace(os.sep, "/")
