@@ -6,7 +6,9 @@ A free, self-hosted application security lab: one command scans any repository w
 
 [Documentation](docs/README.md) · [Try it in minutes](#try-it-in-minutes) · [Architecture](docs/architecture.md) · [Español](README.md)
 
-[![CI](https://github.com/mdesantis1984/labsecurity/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/mdesantis1984/labsecurity/actions/workflows/ci.yml) [![License: Apache 2.0](https://img.shields.io/badge/license-Apache--2.0-blue)](LICENSE) ![Docker Compose](https://img.shields.io/badge/docker-compose-2496ED?logo=docker&logoColor=white) ![Ports](https://img.shields.io/badge/ports-127.0.0.1%20only-2e7d32) `repository: labsec 0.1.0` · `Opengrep 2.0.0` · `SonarQube 26.11 Community` · `DefectDojo 3.5.200` · 8 integrated tools · 33 own gated rules · ES/EN
+[![CI](https://github.com/mdesantis1984/labsecurity/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/mdesantis1984/labsecurity/actions/workflows/ci.yml) [![License: Apache 2.0](https://img.shields.io/badge/license-Apache--2.0-blue)](LICENSE) ![Docker Compose](https://img.shields.io/badge/docker-compose-2496ED?logo=docker&logoColor=white) ![Ports](https://img.shields.io/badge/ports-127.0.0.1%20only-2e7d32)
+
+![labsec 0.1.0](https://img.shields.io/badge/labsec-0.1.0-455a64) ![Opengrep 2.0.0](https://img.shields.io/badge/Opengrep-2.0.0-455a64) ![SonarQube 26.11 Community](https://img.shields.io/badge/SonarQube-26.11%20Community-455a64) ![DefectDojo 3.5.200](https://img.shields.io/badge/DefectDojo-3.5.200-455a64) ![8 tools](https://img.shields.io/badge/tools-8-6a1b9a) ![33 own gated rules](https://img.shields.io/badge/own%20rules-33%20gated-6a1b9a) ![ES/EN](https://img.shields.io/badge/languages-ES%20%7C%20EN-6a1b9a)
 
 ## A local lab, not another cloud service
 
