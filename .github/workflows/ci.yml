@@ -99,6 +99,8 @@ jobs:
           BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
         run: |
           case "${BASE_SHA:-}" in
-            ''|0000000000000000000000000000000000000000) BASE_SHA="HEAD~1" ;;
+            ''|0000000000000000000000000000000000000000)
+              # First push of a branch: compare with the parent, or with the empty tree for a root commit.
+              if git rev-parse --verify --quiet HEAD~1 >/dev/null; then BASE_SHA="HEAD~1"; else BASE_SHA="$(git hash-object -t tree /dev/null)"; fi ;;
           esac
           git diff --check "$BASE_SHA" HEAD
