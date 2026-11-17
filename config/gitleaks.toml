@@ -87,6 +87,9 @@ tags = ["keycloak", "labsec"]
   regexes = ['''(?i)^(?:changeme|change-me|secret|your[-_ ].*|x{3,})$''']
 
 # Files that are never a credential source.
+# Tests and fixtures are NOT allowlisted as a whole: a real credential committed under tests/ is still a leak. When a
+# fixture holds a deliberately fake value, add that one file (or a `regexes` entry for the fake value) here, in
+# LabSecurity's own config, after reviewing it: a scanned project cannot loosen this file.
 [allowlist]
 description = "LabSecurity global allowlist"
 paths = [

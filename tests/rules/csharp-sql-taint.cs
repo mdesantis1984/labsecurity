@@ -169,4 +169,60 @@ public class TaintRepo
         // ok: labsec.csharp.sql-raw-tainted-input
         return ctx.Users.FromSqlRaw($"SELECT * FROM users WHERE name = '{name}'");
     }
+
+    // ---- constant-only holes, values bound as parameters (safe shapes) ---------------------------------
+
+    private const string Table = "users";
+    private const string Columns = "id, name";
+
+    public object ConstantHolesNegative(string name, NpgsqlConnection conn, NpgsqlCommand cmd)
+    {
+        // Every hole is a const: the text is a compile-time constant, the value travels as a parameter.
+        var byConst = $"SELECT {Columns} FROM {Table} WHERE name = @name";
+        // ok: labsec.csharp.sql-raw-built-text-variable, labsec.csharp.sql-raw-tainted-input
+        var a = new NpgsqlCommand(byConst, conn);
+        a.Parameters.AddWithValue("name", name);
+
+        var byNameof = $"SELECT * FROM {nameof(TaintRepo)} WHERE name = @name";
+        // ok: labsec.csharp.sql-raw-built-text-variable, labsec.csharp.sql-raw-tainted-input
+        var b = new NpgsqlCommand(byNameof, conn);
+        b.Parameters.Add(new NpgsqlParameter("name", name));
+
+        var byLiteral = $"SELECT {"id"} FROM users WHERE rank > {1} AND name = @name";
+        // ok: labsec.csharp.sql-raw-built-text-variable, labsec.csharp.sql-raw-tainted-input
+        cmd.CommandText = byLiteral;
+
+        var concatenated = "SELECT " + Columns + " FROM " + Table + " WHERE name = @name";
+        var parameters = new NpgsqlParameter[] { new NpgsqlParameter("name", name) };
+        // ok: labsec.csharp.sql-raw-built-text-variable, labsec.csharp.sql-raw-tainted-input
+        var c = ctx.Users.FromSqlRaw(concatenated, parameters);
+
+        var multiLine = $"""
+            SELECT {Columns}
+            FROM {Table}
+            WHERE name = @name
+            """;
+        // ok: labsec.csharp.sql-raw-built-text-variable, labsec.csharp.sql-raw-tainted-input
+        return ctx.Users.FromSqlRaw(multiLine, parameters);
+    }
+
+    public object ConstantHolesStillFlagMixedHoles(string name, string table, NpgsqlConnection conn)
+    {
+        // One hole is a method parameter: the text is not constant, even though the others are.
+        var mixed = $"SELECT {Columns} FROM {table} WHERE name = @name";
+        // ruleid: labsec.csharp.sql-raw-built-text-variable, labsec.csharp.sql-raw-tainted-input
+        var a = new NpgsqlCommand(mixed, conn);
+
+        var rawMixed = $"""
+            SELECT {Columns}
+            FROM {table}
+            """;
+        // ruleid: labsec.csharp.sql-raw-built-text-variable, labsec.csharp.sql-raw-tainted-input
+        var c = new NpgsqlCommand(rawMixed, conn);
+
+        var mixedNameof = $"SELECT * FROM {nameof(TaintRepo)} WHERE name = '{name}'";
+        // ruleid: labsec.csharp.sql-raw-built-text-variable, labsec.csharp.sql-raw-tainted-input
+        var b = new NpgsqlCommand(mixedNameof, conn);
+        return a;
+    }
 }

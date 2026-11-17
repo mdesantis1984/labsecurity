@@ -29,12 +29,26 @@ rules:
       - patterns:
           - pattern-either:
               - pattern: $A + $B
-              - pattern: $"..."
               - pattern: string.Format(...)
               - pattern: String.Format(...)
               - pattern: new StringBuilder(...)
+              # An interpolated text is a source only when at least one hole is not a compile-time constant: constant
+              # propagation folds `const` values into literals (so `"..."` matches them); numbers and nameof(...) are
+              # constants too but are not folded.
+              - patterns:
+                  - pattern: $"...{$HOLE}..."
+                  - metavariable-pattern:
+                      metavariable: $HOLE
+                      patterns:
+                        - pattern: $ANY
+                        - pattern-not: '"..."'
+                  - metavariable-regex:
+                      metavariable: $HOLE
+                      regex: '^(?!\s*(?:nameof\s*\(|[0-9]))'
           - pattern-not: '"..." + "..."'
           - pattern-not: '"..." + "..." + "..."'
+          # Concatenation whose operands are all `const` values is folded into a literal as well.
+          - pattern-not: '"..."'
     pattern-sinks:
       - patterns:
           - pattern-either:

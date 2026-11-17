@@ -1,4 +1,5 @@
 import json
+import re
 
 import pytest
 from fake_dojo import FakeDojo, finding
@@ -134,3 +135,21 @@ def test_report_from_summary_feeds_the_pr_body():
     assert "`Api/P.cs:3` SQL built" in body
     assert "deploy/s.txt" not in body and "Leaked key" not in body
     assert "http://dd.test/engagement/10" in body
+
+
+def test_report_json_never_repeats_a_finding_inside_one_list(lab):
+    data = report.build_report(lab, "demo")
+    for key in ("blocking", "new_critical_high", "to_confirm", "false_positives"):
+        ids = [item["id"] for item in data[key]]
+        assert len(ids) == len(set(ids)), key
+
+
+def test_new_critical_high_and_blocking_overlap_by_design_and_markdown_lists_each_once(lab):
+    data = report.build_report(lab, "demo")
+    blocking = {item["id"] for item in data["blocking"]}
+    new_high = {item["id"] for item in data["new_critical_high"]}
+    assert blocking & new_high, "the blocking list is the open Critical/High view; a new one appears in both lists"
+    text = report.render_markdown(data)
+    confirm = {item["id"] for item in data["to_confirm"]}  # those also have their own "To confirm" section
+    for finding_id in (blocking | new_high) - confirm:
+        assert len(re.findall(rf"DD #{finding_id}\b", text)) == 1, finding_id

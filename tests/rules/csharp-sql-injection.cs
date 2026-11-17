@@ -55,4 +55,27 @@ public class Repo
         // ok: labsec.csharp.sql-raw-built-text
         cmd.Parameters.Add(new NpgsqlParameter("name", name));
     }
+
+    private const string Table = "users";
+    private const string Columns = "id, name";
+
+    public void ConstantHoles(string name, NpgsqlConnection conn, NpgsqlCommand cmd)
+    {
+        // ok: labsec.csharp.sql-raw-built-text
+        var a = ctx.Users.FromSqlRaw($"SELECT {Columns} FROM {Table} WHERE name = @name", new NpgsqlParameter("name", name));
+        // ok: labsec.csharp.sql-raw-built-text
+        var b = ctx.Users.FromSqlRaw("SELECT " + Columns + " FROM " + Table + " WHERE name = @name", new NpgsqlParameter("name", name));
+        // ok: labsec.csharp.sql-raw-built-text
+        var c = new NpgsqlCommand($"SELECT * FROM {nameof(Repo)} WHERE name = @name", conn);
+        // ok: labsec.csharp.sql-raw-built-text
+        cmd.CommandText = $"SELECT {"id"} FROM users WHERE rank > {1} AND name = @name";
+
+        // A hole that is not constant keeps the finding.
+        // ruleid: labsec.csharp.sql-raw-built-text
+        var d = ctx.Users.FromSqlRaw($"SELECT {Columns} FROM {name} WHERE id = @id", new NpgsqlParameter("id", 1));
+        // ruleid: labsec.csharp.sql-raw-built-text
+        var e = ctx.Users.FromSqlRaw($"SELECT * FROM {nameof(Repo)} WHERE name = '{name}'");
+        // ruleid: labsec.csharp.sql-raw-built-text
+        cmd.CommandText = "SELECT * FROM " + Table + " WHERE name = '" + name + "'";
+    }
 }

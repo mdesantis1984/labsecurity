@@ -111,13 +111,61 @@ repository; `--no-save` prints only.
 
 ```yaml
 name: my-project                 # display name; the slug (directory name) stays the key
-exclude: ["**/generated/**"]     # extra globs on top of .git, node_modules, bin, obj, dist, .angular
+exclude: ["**/generated/**", "!.agents/**"]   # extra globs on top of the defaults; "!<default>" scans a default again
 rules: [security/rules]          # extra Opengrep rule files or folders, relative to the project
 zap:                             # only loopback targets (127.0.0.1, localhost, ::1) are allowed
   target_url: http://127.0.0.1:5000
   test_user: qa-user             # never write a password here
 ```
 
-Without the file the defaults apply: every static tool, no ZAP. Unknown keys, password-like keys, non-loopback ZAP targets
+Without the file the defaults apply (see "What gets scanned"): every static tool, no ZAP. Unknown keys, password-like keys, non-loopback ZAP targets
 and rule paths outside the project are rejected (exit 1). Add this file to a repository only with the approval of its
 maintainers.
+
+## What gets scanned
+
+Every tool analyzes a disposable work copy, never the project. The copy holds exactly the files git would consider part of
+the project:
+
+- **In a git repository**: tracked files plus untracked files that are not ignored (`git ls-files -co --exclude-standard`).
+  What the repository's own `.gitignore` hides is never copied: linked worktrees under `.worktrees/`, local SDKs such as
+  `.toolchain/`, package caches, build output. Untracked nested repositories and submodule checkouts are skipped too.
+- **Outside git**: every file except the built-in directories (`.git`, `node_modules`, `bin`, `obj`, `dist`, `.angular`).
+- **Gitleaks** is unchanged: it scans the history of the branch (`git` mode) or, outside git, the work copy.
+
+On top of that, files are left out in three layers; each one is counted under its own reason in the run summary:
+
+| Reason | What it covers |
+| --- | --- |
+| `gitignore` | paths ignored by the repository's `.gitignore` (an ignored directory counts once) |
+| `nested-repo` | untracked nested git repositories and submodule checkouts (each counts once) |
+| `builtin-dir` | `.git`, `node_modules`, `bin`, `obj`, `dist`, `.angular` |
+| `default-exclude` | `.agents/**` (vendored agent skills), `**/*.min.js`, `**/*.min.mjs`, `**/node_modules/**` |
+| `appsec-exclude` | the globs of `.appsec.yml` `exclude:` |
+| `long-line` | source files with a line longer than 5000 bytes (minified or vendored bundles, for example a bundled `.mjs`) |
+
+`exclude:` extends the defaults. To scan a default again, list it with a leading `!` (`exclude: ["!.agents/**"]`); a `!`
+entry that is not one of the defaults is rejected (exit 1). Tests and fixtures stay in scope for every tool: they are not
+a default exclude, and Gitleaks does not allowlist them as a whole. A deliberately fake value in a fixture is allowlisted
+by file or by regex in LabSecurity's own `config/gitleaks.toml`, which a scanned project cannot change. The long-line
+check only looks at source files (the extensions LabSecurity detects); data files such as lockfiles are never skipped.
+
+Trivy also skips any `.cache` and `.toolchain` directory (`--skip-dirs`), so the `*.deps.json` files of a NuGet cache or a
+local SDK never produce dependency findings even when such a directory is tracked.
+
+The summary (`--json`: key `scope`; text: the `scope:` line) says how many files were scanned, how many were excluded per
+reason and which files the long-line check skipped (at most 20 listed):
+
+```json
+"scope": {"files": 1204, "excluded": {"default-exclude": 31, "gitignore": 9, "long-line": 1}, "long_line_files": ["public/bundle.mjs"]}
+```
+
+Counts are files, except for directories that are pruned without being opened (ignored directories, nested repositories and,
+outside git, the built-in directories), which count once.
+
+## Report JSON: overlapping lists
+
+`report.json` lists a finding once per list. `blocking` is every open Critical/High finding that is neither a false
+positive nor an accepted risk; `new_critical_high` is the Critical/High findings new in the selected run. On a first lap
+both lists hold the same findings: that is the same data seen two ways, not a duplicate. The markdown report and the PR body
+print each finding once.

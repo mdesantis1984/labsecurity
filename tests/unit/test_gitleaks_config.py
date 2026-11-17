@@ -140,3 +140,9 @@ def test_keycloak_client_secret_settings_are_found(rules, template):
 
 def test_keycloak_setting_placeholder_is_ignored(rules):
     assert found(rules["labsec-keycloak-client-secret-setting"], "KEYCLOAK_CLIENT_SECRET=changeme") is None
+
+
+def test_tests_and_fixtures_are_not_blanket_allowlisted(config):
+    paths = config["allowlist"]["paths"]
+    for sample in ("tests/fixtures/appsettings.json", "src/Api.Tests/Secrets.cs", "test/data/config.env", "__tests__/a.ts"):
+        assert not any(re.search(rx, sample) for rx in paths), sample
