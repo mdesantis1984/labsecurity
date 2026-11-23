@@ -2,7 +2,7 @@
 # .NET SDK 10.0.404 with SonarScanner for .NET 12.1.0 and three extra Roslyn analyzer packages.
 # Pass 1 (security SARIF for DefectDojo): the SDK's built-in analyzers (CA2100, CA23xx, CA3xxx, CA5xxx) and
 # SecurityCodeScan.VS2019. Pass 2 (quality, SonarQube external issues): AnalysisMode=All, Meziantou.Analyzer, Roslynator.Analyzers.
-FROM mcr.microsoft.com/dotnet/sdk:10.0.404@sha256:fe0fd4e93bd2fbb47c883b7a6369e5c8d3db8bf01cdc5981f6ee35fbdf3ff4fb
+FROM mcr.microsoft.com/dotnet/sdk:11.0.100@sha256:65f3c7c6a25a239ab3e6719f2896147e7b68242ff2d8818dd70498bde6ef8bea
 
 ENV DOTNET_CLI_TELEMETRY_OPTOUT=1 \
     DOTNET_NOLOGO=1 \
