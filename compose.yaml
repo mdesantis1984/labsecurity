@@ -190,7 +190,7 @@ services:
 
   dd-nginx:
     <<: *no-restart
-    image: docker.io/defectdojo/defectdojo-nginx:3.5.200@sha256:830957d21a5a3bb04ce4a02d7e7c6f88732e4fa087f0bc9d1edd8bbc76f6e134
+    image: docker.io/defectdojo/defectdojo-nginx:3.5.202@sha256:27540c8a846975a6f106b133f8dd5d50dc2a5808df96e36d55b46f01dd2c8d78
     depends_on:
       dd-uwsgi:
         condition: service_healthy
