@@ -17,7 +17,7 @@ x-no-restart: &no-restart
   restart: unless-stopped
 
 x-dd-image: &dd-image
-  image: docker.io/defectdojo/defectdojo-django:3.5.200@sha256:a72b66bf249b3d3ead62d14ed7026486eca5ebe6e5a784528eac11fa6fac7a38
+  image: docker.io/defectdojo/defectdojo-django:3.5.202@sha256:7f905b5f2c40e4de0394a9d382102a54c0f08ee435d2fc9c7e267e86839fd965
 
 x-dd-env: &dd-env
   DD_DEBUG: "False"
